@@ -1,0 +1,11 @@
+[project]
+name = "MIRA"
+requires-python = ">=3.10"
+dependencies = [
+    "opencv-python",
+    "mediapipe",
+    "numpy",
+    "torch",
+    "pyautogui",
+    "pyside6",
+]
