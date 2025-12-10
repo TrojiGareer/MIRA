@@ -1,23 +1,36 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QPushButton, QLabel
+from PyQt6.QtWidgets import (
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+)
+from PyQt6.QtCore import QSize
+
+from .widgets import HeaderWidget, CentralWidget, FooterWidget
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-
         self.setWindowTitle("M.I.R.A. – Motion Interpretation Remote Assistant")
-        self.setMinimumSize(800, 600)
+        self.setMinimumSize(QSize(800, 600)) # Increased minimum size for better view
 
-        # basic layout
-        container = QWidget()
-        layout = QVBoxLayout(container)
+        self._initialize_components()
+        self._setup_main_layout()
 
-        # placeholder buttons
-        self.btn_train = QPushButton("Open Training Window")
-        self.btn_start = QPushButton("Start Camera")
-        self.btn_stop = QPushButton("Stop Camera")
-
-        layout.addWidget(self.btn_train)
-        layout.addWidget(self.btn_start)
-        layout.addWidget(self.btn_stop)
-
-        self.setCentralWidget(container)
+    """
+    Initializes custom component widgets.
+    """
+    def _initialize_components(self):
+        self.header = HeaderWidget()
+        self.central_widget = CentralWidget()
+        self.footer = FooterWidget()
+        
+    """
+    Arranges the main header, content, and footer.
+    """
+    def _setup_main_layout(self):
+        main_widget = QWidget()
+        main_layout = QVBoxLayout(main_widget)
+        
+        main_layout.addWidget(self.header)
+        main_layout.addWidget(self.central_widget)
+        main_layout.addWidget(self.footer)
+        
+        self.setCentralWidget(main_widget)
