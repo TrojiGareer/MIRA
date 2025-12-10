@@ -1,36 +1,42 @@
-from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-)
-from PyQt6.QtCore import QSize
+from PyQt6.QtWidgets import QMainWindow
+from PyQt6.uic.load_ui import loadUiType
+import os
 
-from .widgets import HeaderWidget, CentralWidget, FooterWidget
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UI_PATH = os.path.join(BASE_DIR, 'main_window.ui')
 
-class MainWindow(QMainWindow):
+# The UI is dynamically loaded
+try:
+    Ui_MainWindow, QtBaseClass = loadUiType(UI_PATH)
+except FileNotFoundError:
+    print(f"ERROR: UI file not found at {UI_PATH}. Check path and file name.")
+
+    # Use generic QMainWindow if UI file is missing to prevent crash
+    class Ui_MainWindow:
+        def setupUi(self, MainWindow): pass
+    QtBaseClass = QMainWindow
+
+
+"""
+The main application window, inheriting structure from the UI file.
+The LSP can identify the two superclasses of MainWindow as nonexisting but they are created at runtime
+"""
+class MainWindow(QtBaseClass, Ui_MainWindow):
     def __init__(self):
         super().__init__()
+        
+        # Use the loaded UI file
+        self.setupUi(self)
+        
         self.setWindowTitle("M.I.R.A. – Motion Interpretation Remote Assistant")
-        self.setMinimumSize(QSize(800, 600)) # Increased minimum size for better view
-
+        
         self._initialize_components()
-        self._setup_main_layout()
 
     """
-    Initializes custom component widgets.
+    Initializes custom logic and connects the UI to the backend(camera, model, etc.)
     """
     def _initialize_components(self):
-        self.header = HeaderWidget()
-        self.central_widget = CentralWidget()
-        self.footer = FooterWidget()
+        # All widgets defined in the .ui file are now attributes of self due to self.setupUi(self)
+        # Widgets' names, custom properties are gotten from the .ui files for connecting
         
-    """
-    Arranges the main header, content, and footer.
-    """
-    def _setup_main_layout(self):
-        main_widget = QWidget()
-        main_layout = QVBoxLayout(main_widget)
-        
-        main_layout.addWidget(self.header)
-        main_layout.addWidget(self.central_widget)
-        main_layout.addWidget(self.footer)
-        
-        self.setCentralWidget(main_widget)
+        print("INFO: UI structure loaded from Qt Designer.")
