@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QMainWindow
+from PyQt6.QtWidgets import QMainWindow, QStatusBar, QLabel
 from PyQt6.uic.load_ui import loadUiType
 import os
 
@@ -39,4 +39,7 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         # All widgets defined in the .ui file are now attributes of self due to self.setupUi(self)
         # Widgets' names, custom properties are gotten from the .ui files for connecting
         
+        self.statusbar.showMessage("Successfully loaded!", 2000)
+        self.statusbar.addPermanentWidget(QLabel("FPS: --"))
+        self.statusbar.addPermanentWidget(QLabel("Interpretor status: Offline"))
         print("INFO: UI structure loaded from Qt Designer.")
