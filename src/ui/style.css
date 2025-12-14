@@ -1,0 +1,64 @@
+* {
+	font-weight: 700;
+	font-size: 12pt;
+	color: #fcd4ff;
+}
+
+QMenuBar {
+	background-color: #382437;
+	border-bottom: 1px solid purple;
+}
+
+QStatusBar {
+	background-color: #261325;
+	border-top: 1px solid purple;
+}
+
+QLabel#labelTitle {
+	font-size: 28pt;
+}
+
+QLabel#labelSubtitle {
+	font-size: 20pt;
+}
+
+QLabel#labelTraining {
+	margin: 20%;
+	font-size: 20pt;
+}
+
+QLabel#labelCurrentPredictionText {
+	font-size: 18pt;
+}
+
+QLabel#labelCurrentPrediction {
+	font-size: 18pt;
+}
+
+QPushButton {
+	font-size: 16pt;
+}
+
+QPushButton#buttonStartMIRA {
+	font-size: 20pt;
+	background-color: #4a106b;
+}
+
+QPushButton#buttonExecutePrediction {
+	font-size: 18pt;
+	background-color: #4a106b;
+}
+
+QComboBox {
+	font-size: 16pt;
+}
+
+QListWidget {
+	border: 1px solid purple;
+	border-radius: 3px;
+}
+
+QFrame#frameVideoFeed {
+	border: 2px solid purple;
+	border-radius: 7px;
+}

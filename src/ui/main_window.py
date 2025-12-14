@@ -39,7 +39,15 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         # All widgets defined in the .ui file are now attributes of self due to self.setupUi(self)
         # Widgets' names, custom properties are gotten from the .ui files for connecting
         
-        self.statusbar.showMessage("Successfully loaded!", 2000)
+        # The new widgets added after setuiUi don't take the styles from the .css file => define them here
+        self.statusbar.setStyleSheet("""
+            background-color: #382437;
+            padding: 0px 20px
+        """)
+
+        # The status bar permanent labels need to be set here
         self.statusbar.addPermanentWidget(QLabel("FPS: --"))
         self.statusbar.addPermanentWidget(QLabel("Interpretor status: Offline"))
-        print("INFO: UI structure loaded from Qt Designer.")
+
+        self.statusbar.showMessage("Successfully loaded!", 2000)
+        print("INFO: Components initalized successfully!")
