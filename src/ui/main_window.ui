@@ -136,8 +136,14 @@
             <layout class="QVBoxLayout" name="verticalLayout_2">
              <item alignment="Qt::AlignHCenter|Qt::AlignVCenter">
               <widget class="QLabel" name="labelVideoFeed">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
                <property name="text">
-                <string>VIDEO FEED</string>
+                <string>Camera not active</string>
                </property>
               </widget>
              </item>
