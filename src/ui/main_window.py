@@ -22,6 +22,8 @@ The main application window, inheriting structure from the UI file.
 The LSP can identify the two superclasses of MainWindow as nonexisting but they are created at runtime
 """
 class MainWindow(QtBaseClass, Ui_MainWindow):
+    _is_running = False # System state
+
     def __init__(self):
         super().__init__()
         
@@ -46,8 +48,33 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         """)
 
         # The status bar permanent labels need to be set here
+
         self.statusbar.addPermanentWidget(QLabel("FPS: --"))
-        self.statusbar.addPermanentWidget(QLabel("Interpretor status: Offline"))
+
+        self.labelInterpreterStatus = QLabel("Interpreter: Offline")
+        self.statusbar.addPermanentWidget(self.labelInterpreterStatus)
+
+        # Connect signals
+        self.buttonStartMIRA.clicked.connect(self.toggle_mira)
 
         self.statusbar.showMessage("Successfully loaded!", 2000)
         print("INFO: Components initalized successfully!")
+
+    """
+    Starts or stops the M.I.R.A.
+    """
+    def toggle_mira(self):
+            btn = self.buttonStartMIRA
+            
+            if not self._is_running:
+                self._is_running = True
+                btn.setText("Stop M.I.R.A.")
+                self.labelInterpreterStatus.setText("Interpreter: Online") 
+                
+                # TODO: Start camera thread here
+            else:
+                self._is_running = False
+                btn.setText("Start M.I.R.A.")
+                self.labelInterpreterStatus.setText("Interpreter: Offline")
+                
+                # TODO: Stop camera thread here
