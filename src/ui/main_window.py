@@ -81,6 +81,13 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         self.mp_draw = mp.solutions.drawing_utils
         self.mp_drawing_styles = mp.solutions.drawing_styles
 
+        self.listPredictionLog.clear()
+        self.last_gesture = "None"
+
+        self.listPredictionLog.setFixedWidth(300)
+        self.labelCurrentPrediction.setFixedWidth(200)
+        self.labelCurrentPrediction.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         # Connect signals
         self.buttonStartMIRA.clicked.connect(self.toggle_mira)
 
@@ -147,6 +154,8 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.hands.process(frame_rgb)
 
+        current_gesture = "No Hand"
+
         # 2. Draw landmarks if hands are found
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
@@ -157,6 +166,28 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
                     self.mp_drawing_styles.get_default_hand_landmarks_style(),
                     self.mp_drawing_styles.get_default_hand_connections_style()
                 )
+                index_tip_y = hand_landmarks.landmark[8].y
+                index_pip_y = hand_landmarks.landmark[6].y
+
+                # If Tip is 'higher' (smaller Y value) than Knuckle -> UP
+                # this is just dummy code, we'll have actual things not an endless if else
+                if index_tip_y < index_pip_y:
+                    current_gesture = "Index Up"
+                else:
+                    current_gesture = "Fist / Other"
+
+        self.labelCurrentPrediction.setText(current_gesture)
+
+        # B. Update the "Log" only if the gesture has CHANGED
+        if current_gesture != self.last_gesture:
+            if current_gesture != "No Hand": # Optional: Don't log "No Hand"
+                self.listPredictionLog.insertItem(0, current_gesture) # Add to top
+                
+                # Optional: Keep list short (max 10 items)
+                if self.listPredictionLog.count() > 10:
+                    self.listPredictionLog.takeItem(10)
+            
+            self.last_gesture = current_gesture
 
         # 3. Convert to QPixmap and Display
         # (Your convert_cv_to_pixmap function handles the mirroring/flipping)
