@@ -110,24 +110,18 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
             self.labelInterpreterStatus.setText("Interpreter: Offline")
 
     def convert_cv_to_pixmap(self, frame: np.ndarray) -> QPixmap:
-        """Converts a BGR OpenCV frame (numpy array) to a QPixmap"""
-        
-        # OpenCV uses BGR, but Qt needs RGB. Convert the color space
+        frame = cv2.flip(frame, 1)
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        
-        # Create QImage from numpy array data
         h, w, ch = frame_rgb.shape
-        q_img = QImage(frame_rgb.data, w, h, QImage.Format.Format_RGB888)
+        q_img = QImage(frame_rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
         
-        # Convert QImage to QPixmap for optimized rendering
         pixmap = QPixmap.fromImage(q_img)
-        
-        # Scale QPixmap to fit the QLabel size
         frame_size = self.frameVideoFeed.size()
+        
         scaled_pixmap = pixmap.scaled(
             frame_size.width(), frame_size.height(),
-            Qt.AspectRatioMode.IgnoreAspectRatio,
-            Qt.TransformationMode.FastTransformation
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
         )
         return scaled_pixmap
 
