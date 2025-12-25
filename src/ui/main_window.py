@@ -7,6 +7,7 @@ import cv2
 import time
 import os
 from capture import Camera
+import mediapipe as mp
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UI_PATH = os.path.join(BASE_DIR, 'main_window.ui')
@@ -69,6 +70,17 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         self.labelInterpreterStatus = QLabel("Interpreter: Offline")
         self.statusbar.addPermanentWidget(self.labelInterpreterStatus)
 
+        # Initialize MediaPipe Hands
+        self.mp_hands = mp.solutions.hands
+        self.hands = self.mp_hands.Hands(
+            static_image_mode=False,
+            max_num_hands=2,
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5
+        )
+        self.mp_draw = mp.solutions.drawing_utils
+        self.mp_drawing_styles = mp.solutions.drawing_styles
+
         # Connect signals
         self.buttonStartMIRA.clicked.connect(self.toggle_mira)
 
@@ -127,17 +139,35 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
 
     def update_video_feed(self, frame: np.ndarray):
         """
-        Slot: Receives the captured frame from the camera thread and updates the video feed label
+        Slot: Receives the captured frame, draws hand landmarks, and updates the display
         """
 
+        # 1. Process the frame with MediaPipe
+        # Convert BGR (OpenCV) to RGB (MediaPipe)
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = self.hands.process(frame_rgb)
+
+        # 2. Draw landmarks if hands are found
+        if results.multi_hand_landmarks:
+            for hand_landmarks in results.multi_hand_landmarks:
+                self.mp_draw.draw_landmarks(
+                    frame,  # Draw directly on the original BGR frame
+                    hand_landmarks,
+                    self.mp_hands.HAND_CONNECTIONS,
+                    self.mp_drawing_styles.get_default_hand_landmarks_style(),
+                    self.mp_drawing_styles.get_default_hand_connections_style()
+                )
+
+        # 3. Convert to QPixmap and Display
+        # (Your convert_cv_to_pixmap function handles the mirroring/flipping)
         pixmap = self.convert_cv_to_pixmap(frame)
         self.labelVideoFeed.setPixmap(pixmap)
 
+        # 4. Update FPS Counter
         self._frame_count += 1
         current_time = time.time()
         elapsed_time = current_time - self._start_time
 
-        # Aim to update the FPS counter ~each second
         if elapsed_time >= 1.0:
             fps = self._frame_count / elapsed_time
             self.labelFPS.setText(f"FPS: {int(round(fps))}")
