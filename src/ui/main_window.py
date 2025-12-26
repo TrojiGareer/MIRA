@@ -94,7 +94,7 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         # predictions integration
         self.listPredictionLog.clear()
         self.last_gesture = "None"
-        self.recorder = Recorder('hand_data.csv')
+        self.recorder = Recorder('../hand_data.csv')
         self.interpreter = Interpreter('model.p')
 
         self.listPredictionLog.setFixedWidth(300)
