@@ -9,6 +9,8 @@ import os
 from capture import Camera
 import mediapipe as mp
 import csv
+from utils.recorder import Recorder
+from interpreter import Interpreter
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UI_PATH = os.path.join(BASE_DIR, 'main_window.ui')
@@ -85,14 +87,21 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         # data collecting_mode
         self.is_collecting_data = False
         self.current_raw_landmarks = None
+        self.user_input_buffer = ""
+        self.is_stage_2_recording = False
+        self.session_recording_count = 0
 
         # predictions integration
         self.listPredictionLog.clear()
         self.last_gesture = "None"
+        self.recorder = Recorder('hand_data.csv')
+        self.interpreter = Interpreter('model.p')
 
         self.listPredictionLog.setFixedWidth(300)
-        self.labelCurrentPrediction.setFixedWidth(200)
+        self.labelCurrentPrediction.setFixedWidth(500)
         self.labelCurrentPrediction.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.buttonStartMIRA.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.buttonStartTraining.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         # Connect signals
         self.buttonStartMIRA.clicked.connect(self.toggle_mira)
@@ -112,12 +121,21 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
             if self._is_running:
                 self.toggle_mira()
             
+            # start the camera and load the ui changes needed
             self.camera_thread = Camera()
             self.camera_thread.frame_captured.connect(self.draw_and_show)
             self.camera_thread.start()
 
             btn.setText("Stop Data Collection")
+            self.labelCurrentPredictionText.setText("Label: ")
+            self.labelCurrentPrediction.setText("type label to start")
+            self.buttonExecutePrediction.setText("Done")
             self.is_collecting_data = True
+
+            # start listening and collecting
+            self.setFocus()
+
+
         else:
             if self.camera_thread:
                 # Disconnect the camera to prevent the thread from leaving a last frame
@@ -129,7 +147,13 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
             
             btn.setText("Start Data Collection")
             self.labelVideoFeed.setText("Camera not active")
+            self.labelCurrentPredictionText.setText("Current Prediction: ")
+            self.labelCurrentPrediction.setText("-")
+            self.buttonExecutePrediction.setText("Execute")
             self.is_collecting_data = False
+            self.user_input_buffer = ""
+            self.is_stage_2_recording = False
+            self.session_recording_count = 0
 
     def draw_and_show(self, frame: np.ndarray):
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -209,52 +233,43 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         Slot: Receives the captured frame, draws hand landmarks, and updates the display
         """
 
-        # 1. Process the frame with MediaPipe
-        # Convert BGR (OpenCV) to RGB (MediaPipe)
+        # bgr -> rgb
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.hands.process(frame_rgb)
 
         current_gesture = "No Hand"
 
-        # 2. Draw landmarks if hands are found
+        # draw landmarks if hands are found
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
                 self.mp_draw.draw_landmarks(
-                    frame,  # Draw directly on the original BGR frame
+                    frame,
                     hand_landmarks,
                     self.mp_hands.HAND_CONNECTIONS,
                     self.mp_drawing_styles.get_default_hand_landmarks_style(),
                     self.mp_drawing_styles.get_default_hand_connections_style()
                 )
-                index_tip_y = hand_landmarks.landmark[8].y
-                index_pip_y = hand_landmarks.landmark[6].y
 
-                # If Tip is 'higher' (smaller Y value) than Knuckle -> UP
-                # this is just dummy code, we'll have actual things not an endless if else
-                if index_tip_y < index_pip_y:
-                    current_gesture = "Index Up"
-                else:
-                    current_gesture = "Fist / Other"
+                # here is where the magic happens
+                prediction = self.interpreter.predict(hand_landmarks)
+                current_gesture = prediction
 
         self.labelCurrentPrediction.setText(current_gesture)
 
         # B. Update the "Log" only if the gesture has CHANGED
         if current_gesture != self.last_gesture:
-            if current_gesture != "No Hand": # Optional: Don't log "No Hand"
-                self.listPredictionLog.insertItem(0, current_gesture) # Add to top
+            if current_gesture != "No Hand":
+                self.listPredictionLog.insertItem(0, current_gesture)
                 
-                # Optional: Keep list short (max 10 items)
                 if self.listPredictionLog.count() > 10:
                     self.listPredictionLog.takeItem(10)
             
             self.last_gesture = current_gesture
 
-        # 3. Convert to QPixmap and Display
-        # (Your convert_cv_to_pixmap function handles the mirroring/flipping)
         pixmap = self.convert_cv_to_pixmap(frame)
         self.labelVideoFeed.setPixmap(pixmap)
 
-        # 4. Update FPS Counter
+        # update fps counter
         self._frame_count += 1
         current_time = time.time()
         elapsed_time = current_time - self._start_time
@@ -264,3 +279,48 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
             self.labelFPS.setText(f"FPS: {int(round(fps))}")
             self._frame_count = 0
             self._start_time = current_time
+
+    def keyPressEvent(self, event):
+        # respond to stage one of data recording, which is label input
+        if not self.is_stage_2_recording:
+            # quit if you finished typing and entered or started accidentally
+            if event.key() == Qt.Key.Key_Q and self.user_input_buffer == "":
+                print("Exited typing mode")
+                return
+
+            # delete keys if u made a typo
+            if event.key() == Qt.Key.Key_Backspace:
+                self.user_input_buffer = self.user_input_buffer[:-1]
+                self.labelCurrentPrediction.setText(self.user_input_buffer)
+
+            # reset and print to console on enter for now
+            elif event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
+                print("Label: " + self.user_input_buffer)
+                self.labelCurrentPredictionText.setText("Recording for ~" + self.user_input_buffer + "~")
+                self.labelCurrentPrediction.setText("Press enter to record data")
+                self.is_stage_2_recording = True
+
+            # print keys as the user types them
+            elif event.text().isprintable() and event.text():
+                self.user_input_buffer += event.text()
+                self.labelCurrentPrediction.setText(self.user_input_buffer)
+        else:
+            #stage two of the data collection, which is data gathering
+            if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
+                if self.current_raw_landmarks is None:
+                    print("no hand on the screen")
+                    self.labelCurrentPrediction.setText("No hand detected!") 
+                    return
+
+                self.recorder.add_record(self.user_input_buffer, self.current_raw_landmarks)
+                self.session_recording_count += 1
+                self.labelCurrentPrediction.setText(f"Recordings: {self.session_recording_count}")
+
+    # this is just for debugging and testing
+    def print_raw_lm(self, hand_landmarks):
+        for i in range(21):
+            lm = hand_landmarks.landmark[i]
+            
+            print(f"Point {i}: x={lm.x}, y={lm.y}")
+        
+        print("-" * 20)
