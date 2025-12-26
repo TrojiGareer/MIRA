@@ -8,6 +8,7 @@ import time
 import os
 from capture import Camera
 import mediapipe as mp
+import csv
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UI_PATH = os.path.join(BASE_DIR, 'main_window.ui')
@@ -81,6 +82,11 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         self.mp_draw = mp.solutions.drawing_utils
         self.mp_drawing_styles = mp.solutions.drawing_styles
 
+        # data collecting_mode
+        self.is_collecting_data = False
+        self.current_raw_landmarks = None
+
+        # predictions integration
         self.listPredictionLog.clear()
         self.last_gesture = "None"
 
@@ -90,9 +96,62 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
 
         # Connect signals
         self.buttonStartMIRA.clicked.connect(self.toggle_mira)
+        self.buttonStartTraining.clicked.connect(self.toggle_data_collection)
 
         self.statusbar.showMessage("Successfully loaded!", 2000)
         print("INFO: Components initalized successfully!")
+
+    def toggle_data_collection(self):
+        """
+        Starts the data collection mode
+        """
+
+        btn = self.buttonStartTraining
+        if not self.is_collecting_data:
+            # if the camera was already running, disconnect interpreter
+            if self._is_running:
+                self.toggle_mira()
+            
+            self.camera_thread = Camera()
+            self.camera_thread.frame_captured.connect(self.draw_and_show)
+            self.camera_thread.start()
+
+            btn.setText("Stop Data Collection")
+            self.is_collecting_data = True
+        else:
+            if self.camera_thread:
+                # Disconnect the camera to prevent the thread from leaving a last frame
+                self.camera_thread.frame_captured.disconnect(self.draw_and_show)
+                self.camera_thread.stop()
+                self.camera_thread.wait()
+                self.camera_thread = None
+            self.labelVideoFeed.clear()
+            
+            btn.setText("Start Data Collection")
+            self.labelVideoFeed.setText("Camera not active")
+            self.is_collecting_data = False
+
+    def draw_and_show(self, frame: np.ndarray):
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = self.hands.process(frame_rgb)
+
+        self.current_raw_landmarks = None
+
+        if results.multi_hand_landmarks:
+            for hand_landmarks in results.multi_hand_landmarks:
+                # store and draw the hand landmarks on each frame
+                self.current_raw_landmarks = hand_landmarks
+    
+                self.mp_draw.draw_landmarks(
+                    frame,
+                    hand_landmarks,
+                    self.mp_hands.HAND_CONNECTIONS,
+                    self.mp_drawing_styles.get_default_hand_landmarks_style(),
+                    self.mp_drawing_styles.get_default_hand_connections_style()
+                )
+        
+        pixmap = self.convert_cv_to_pixmap(frame)
+        self.labelVideoFeed.setPixmap(pixmap)
 
     def toggle_mira(self):
         """
@@ -118,6 +177,7 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
                 # Disconnect the camera to prevent the thread from leaving a last frame
                 self.camera_thread.frame_captured.disconnect(self.update_video_feed)
                 self.camera_thread.stop()
+                self.camera_thread.wait()
                 self.camera_thread = None
 
             self.labelVideoFeed.clear()
