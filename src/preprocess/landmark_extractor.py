@@ -36,9 +36,30 @@ def normalize_size(landmarks):
     return result
 
 # this will be called to ensure all the operations are done on the dataset before storing
+# returns a vector of 42 integers representing the processed x and y values of each point
 
 def process_landmarks(hand_landmarks):
     landmarks = zero_wrist(hand_landmarks)
     processed_landmarks = normalize_size(landmarks)
     return processed_landmarks
 
+# allow processing for either or both of the hands as input in a frame
+# zeros out the missing hand(s)
+
+def process_dataset(results):
+    result = []
+    left_hand_data = [0.0] * 42
+    right_hand_data = [0.0] * 42
+
+    if results.multi_hand_landmarks:
+        for landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
+            crt_label = handedness.classification[0].label
+            flat_coords = process_landmarks(landmarks)
+            if crt_label == "Right":
+                left_hand_data = flat_coords
+            else:
+                right_hand_data = flat_coords
+
+    final_vector = left_hand_data + right_hand_data
+    return final_vector
+                

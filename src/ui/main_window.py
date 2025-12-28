@@ -86,10 +86,6 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
 
         # data collecting_mode
         self.is_collecting_data = False
-        self.current_raw_landmarks = None
-        self.user_input_buffer = ""
-        self.is_stage_2_recording = False
-        self.session_recording_count = 0
 
         # predictions integration
         self.listPredictionLog.clear()
@@ -151,21 +147,18 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
             self.labelCurrentPrediction.setText("-")
             self.buttonExecutePrediction.setText("Execute")
             self.is_collecting_data = False
-            self.user_input_buffer = ""
-            self.is_stage_2_recording = False
-            self.session_recording_count = 0
+            self.recorder.current_gesture = ""
+            self.recorder.is_stage_2_recording = False
+            self.recorder.session_recording_count = 0
 
     def draw_and_show(self, frame: np.ndarray):
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.hands.process(frame_rgb)
 
-        self.current_raw_landmarks = None
+        self.recorder.current_results = results
 
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
-                # store and draw the hand landmarks on each frame
-                self.current_raw_landmarks = hand_landmarks
-    
                 self.mp_draw.draw_landmarks(
                     frame,
                     hand_landmarks,
@@ -251,8 +244,8 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
                 )
 
                 # here is where the magic happens
-                prediction = self.interpreter.predict(hand_landmarks)
-                current_gesture = prediction
+                # prediction = self.interpreter.predict(hand_landmarks)
+                current_gesture = self.recorder.hand_recognition(results)
 
         self.labelCurrentPrediction.setText(current_gesture)
 
@@ -282,39 +275,39 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
 
     def keyPressEvent(self, event):
         # respond to stage one of data recording, which is label input
-        if not self.is_stage_2_recording:
+        if not self.recorder.is_stage_2_recording:
             # quit if you finished typing and entered or started accidentally
-            if event.key() == Qt.Key.Key_Q and self.user_input_buffer == "":
+            if event.key() == Qt.Key.Key_Q and self.recorder.gesture == "":
                 print("Exited typing mode")
                 return
 
             # delete keys if u made a typo
             if event.key() == Qt.Key.Key_Backspace:
-                self.user_input_buffer = self.user_input_buffer[:-1]
-                self.labelCurrentPrediction.setText(self.user_input_buffer)
+                self.recorder.current_gesture = self.recorder.current_gesture[:-1]
+                self.labelCurrentPrediction.setText(self.recorder.current_gesture)
 
             # reset and print to console on enter for now
             elif event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
-                print("Label: " + self.user_input_buffer)
-                self.labelCurrentPredictionText.setText("Recording for ~" + self.user_input_buffer + "~")
+                print("Label: " + self.recorder.current_gesture)
+                self.labelCurrentPredictionText.setText("Recording for ~" + self.recorder.current_gesture + "~")
                 self.labelCurrentPrediction.setText("Press enter to record data")
-                self.is_stage_2_recording = True
+                self.recorder.is_stage_2_recording = True
 
             # print keys as the user types them
             elif event.text().isprintable() and event.text():
-                self.user_input_buffer += event.text()
-                self.labelCurrentPrediction.setText(self.user_input_buffer)
+                self.recorder.current_gesture += event.text()
+                self.labelCurrentPrediction.setText(self.recorder.current_gesture)
         else:
             #stage two of the data collection, which is data gathering
             if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
-                if self.current_raw_landmarks is None:
+                if self.recorder.current_results is None:
                     print("no hand on the screen")
                     self.labelCurrentPrediction.setText("No hand detected!") 
                     return
 
-                self.recorder.add_record(self.user_input_buffer, self.current_raw_landmarks)
-                self.session_recording_count += 1
-                self.labelCurrentPrediction.setText(f"Recordings: {self.session_recording_count}")
+                self.recorder.add_record(self.recorder.current_gesture, self.recorder.current_results)
+                self.recorder.session_recording_count += 1
+                self.labelCurrentPrediction.setText(f"Recordings: {self.recorder.session_recording_count}")
 
     # this is just for debugging and testing
     def print_raw_lm(self, hand_landmarks):
