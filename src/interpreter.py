@@ -1,6 +1,6 @@
 import pickle
 import numpy as np
-from preprocess.landmark_extractor import process_landmarks
+from preprocess.landmark_extractor import process_dataset
 
 class Interpreter:
     def __init__(self, model_path='model.p'):
@@ -16,11 +16,11 @@ class Interpreter:
         except FileNotFoundError:
             self.model = None
 
-    def predict(self, raw_landmarks):
-        if self.model is None or raw_landmarks is None:
+    def predict(self, results):
+        if self.model is None or results is None:
             return "error"
 
-        processed_data = process_landmarks(raw_landmarks)
+        processed_data = process_dataset(results)
         data_array = np.array([processed_data])
         prediction = self.model.predict(data_array)[0]
         return prediction

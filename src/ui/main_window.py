@@ -231,6 +231,7 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         results = self.hands.process(frame_rgb)
 
         current_gesture = "No Hand"
+        self.recorder.current_results = results
 
         # draw landmarks if hands are found
         if results.multi_hand_landmarks:
@@ -244,8 +245,8 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
                 )
 
                 # here is where the magic happens
-                # prediction = self.interpreter.predict(hand_landmarks)
-                current_gesture = self.recorder.hand_recognition(results)
+                prediction = self.interpreter.predict(self.recorder.current_results)
+                current_gesture = prediction
 
         self.labelCurrentPrediction.setText(current_gesture)
 
