@@ -12,6 +12,7 @@ import csv
 from utils.recorder import Recorder
 from interpreter import Interpreter
 from utils.vision import Vision
+from utils.classifier import Classifier
 from enum import Enum, auto
 
 class AppMode(Enum):
@@ -62,10 +63,12 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
 
         # predictions integration
         self.last_gesture = "None"
+        self.last_prediction_time = 0
 
         # custom helper objects
         self.camera_thread = None
         self.vision = Vision()
+        self.classifier = Classifier()
         self.recorder = Recorder('../static_hand_data.csv', '../video_hand_data.csv', '../noise_hand_data.csv')
         self.interpreter = Interpreter('model.p')
 
@@ -176,25 +179,31 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         self.recorder.reset()
 
     def prediction_mode_display(self, results):
-        current_gesture = "No Hand"
+        if not results.multi_hand_landmarks:
+            self.labelCurrentPrediction.setText("No Hand")
+            self.last_gesture = "No Hand"
+            return
 
-        # put predictions on the screen
-        if results.multi_hand_landmarks:
-            prediction = self.interpreter.predict(self.recorder.current_results)
-            current_gesture = prediction
-        else:
-            current_gesture = "No Hand"
+        current_time = time.time()
+        if current_time - self.last_prediction_time < 0.3:
+            self.classifier.past_half_second_frames.append(results)
+            return
+
+        self.last_prediction_time = current_time
+
+        # change this line to update the real-time prediction while debugging
+        gesture_id = self.interpreter.predict(results)
+        current_gesture = str(gesture_id) 
+        self.classifier.past_half_second_frames = []
 
         self.labelCurrentPrediction.setText(current_gesture)
 
-         # update the log only if the gesture has changed
         if current_gesture != self.last_gesture:
-            if current_gesture != "No Hand":
-                self.listPredictionLog.insertItem(0, current_gesture)
-                    
-                if self.listPredictionLog.count() > 10:
-                    self.listPredictionLog.takeItem(10)
-                
+            self.listPredictionLog.insertItem(0, current_gesture)
+            
+            if self.listPredictionLog.count() > 10:
+                self.listPredictionLog.takeItem(10)
+        
         self.last_gesture = current_gesture
 
     def keyPressEvent(self, event):
