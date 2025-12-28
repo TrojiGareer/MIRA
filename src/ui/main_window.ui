@@ -214,14 +214,14 @@
                 <item alignment="Qt::AlignHCenter|Qt::AlignVCenter">
                  <widget class="QLabel" name="labelCurrentPredictionText">
                   <property name="text">
-                   <string>Current prediction: </string>
+                   <string>Current Prediction: </string>
                   </property>
                  </widget>
                 </item>
                 <item alignment="Qt::AlignHCenter|Qt::AlignVCenter">
                  <widget class="QLabel" name="labelCurrentPrediction">
                   <property name="text">
-                   <string>6-7</string>
+                   <string>-</string>
                   </property>
                  </widget>
                 </item>
