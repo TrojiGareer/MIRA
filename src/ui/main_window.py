@@ -4,17 +4,21 @@ from PyQt6.QtCore import Qt
 
 import numpy as np
 
+import time
+from enum import Enum, auto
+
 from capture import Camera
 from capture import Vision
-
-from utils import convert_cv_to_pixmap
-from ml.train import Recorder
 from ml import Predictor
 from ml import Classifier
+from ml.train import Recorder
 
-import time
-import os
-from enum import Enum, auto
+from utils import (
+    convert_cv_to_pixmap,
+    UI_FILE_PATH,
+    STATIC_MODEL_PATH
+)
+
 
 class AppMode(Enum):
     """
@@ -25,14 +29,11 @@ class AppMode(Enum):
     COLLECTING = auto()
     PREDICTING = auto()
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UI_PATH = os.path.join(BASE_DIR, 'main_window.ui')
-
 # The UI is dynamically loaded
 try:
-    Ui_MainWindow, QtBaseClass = loadUiType(UI_PATH)
+    Ui_MainWindow, QtBaseClass = loadUiType(UI_FILE_PATH)
 except FileNotFoundError:
-    print(f"ERROR: UI file not found at {UI_PATH}. Check path and file name.")
+    print(f"ERROR: UI file not found at {UI_FILE_PATH}. Check path and file name.")
 
     # Use generic QMainWindow if UI file is missing to prevent crash
     class Ui_MainWindow:
@@ -52,45 +53,68 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         super().__init__()
         self.mode = AppMode.IDLE
         
-        # ui setup
+        # UI setup
         self.setupUi(self)
         self.setWindowTitle("M.I.R.A. – Motion Interpretation Remote Assistant")
+        self._initialize_components()
+
+        self.camera_thread = None
+        self.vision = Vision()
+        self.classifier = Classifier()
+        self.recorder = Recorder()
+        self.predictor = Predictor(STATIC_MODEL_PATH)
+
+    def _initialize_components(self):
+        """
+        Private helper that initializes custom UI logic and connects the UI to the backend(camera, model, etc.)
+        """
+
+        # All widgets defined in the .ui file are now attributes of self due to self.setupUi(self)
+        # Widgets' names, custom properties are gotten from the .ui files for connections
+
+
+        # The new widgets added after setupUi don't take the styles from the .css file => define them here
         self.statusbar.setStyleSheet("""
             background-color: #382437;
             padding: 0px 20px
         """)
 
-        # status bar permanent labels
+        # Status bar permanent labels
         self.labelFPS = QLabel("FPS: --")
         self.statusbar.addPermanentWidget(self.labelFPS)
         self.labelInterpreterStatus = QLabel("Interpreter: Offline")
         self.statusbar.addPermanentWidget(self.labelInterpreterStatus)
 
-        # predictions integration
-        self.last_gesture = "None"
-        self.last_prediction_time = 0
-
-        # custom helper objects
-        self.camera_thread = None
-        self.vision = Vision()
-        self.classifier = Classifier()
-        self.recorder = Recorder('../static_hand_data.csv', '../video_hand_data.csv', '../noise_hand_data.csv')
-        self.predictor = Predictor('model.p')
-
-        self.listPredictionLog.setFixedWidth(300)
-        self.labelCurrentPrediction.setFixedWidth(500)
-        self.labelCurrentPrediction.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.buttonStartMIRA.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.buttonStartTraining.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-
-        # button functionality
-        self.buttonStartMIRA.clicked.connect(self.toggle_mira)
-        self.buttonStartTraining.clicked.connect(self.toggle_data_collection)
+        # Connect signals
+        self.buttonStartMIRA.clicked.connect(self._toggle_mira)
+        self.buttonStartTraining.clicked.connect(self._toggle_data_collection)
 
         self.statusbar.showMessage("Successfully loaded!", 2000)
         print("INFO: Components initalized successfully!")
 
-    def toggle_data_collection(self):
+    def _toggle_mira(self):
+        """
+        Toggles the inference mode of M.I.R.A.
+        """
+
+        if not self.mode == AppMode.PREDICTING:
+            # if in data collection mode, stop and restart
+            if self.mode == AppMode.COLLECTING:
+                self._toggle_data_collection()
+
+            self._start_camera()
+            self.mode = AppMode.PREDICTING
+            self.buttonStartMIRA.setText("Stop M.I.R.A.")
+            self.labelInterpreterStatus.setText("Interpreter: Online") 
+            
+        else:
+            self.stop_camera()
+            self.mode = AppMode.IDLE
+            self.buttonStartMIRA.setText("Start M.I.R.A.")
+            self.labelInterpreterStatus.setText("Interpreter: Offline")
+            self.listPredictionLog.clear()
+
+    def _toggle_data_collection(self):
         if not self.mode == AppMode.COLLECTING:
             # if in prediction mode, stop and restart in collection mode
             if self.mode == AppMode.PREDICTING:
@@ -116,65 +140,17 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
             self.recorder.is_stage_2_recording = False
             self.recorder.recordings = 0
 
-    def toggle_mira(self):
-        if not self.mode == AppMode.PREDICTING:
-            # if in data collection mode, stop and restart
-            if self.mode == AppMode.COLLECTING:
-                self.toggle_data_collection()
-            self.start_camera()
-            self.mode = AppMode.PREDICTING
-            self.buttonStartMIRA.setText("Stop M.I.R.A.")
-            self.labelInterpreterStatus.setText("Interpreter: Online") 
-            
-        else:
-            self.stop_camera()
-            self.mode = AppMode.IDLE
-            self.buttonStartMIRA.setText("Start M.I.R.A.")
-            self.labelInterpreterStatus.setText("Interpreter: Offline")
-            self.listPredictionLog.clear()
-
-    # this runs once every frame
-    def process_frame_stream(self, raw_frame: np.ndarray):
-        final_frame, results = self.vision.process_frame(raw_frame)
-
-        # parse all mediapipe frame results to the recorder
-        self.recorder.current_results = results
-
-        # custom mode output
-        if self.mode == AppMode.COLLECTING:
-            # check for live recording
-            if self.recorder.is_recording:
-                if self.recorder.session_recording_count < 30:
-                    self.recorder.add_frame_to_current_video(results)
-                    self.recorder.session_recording_count += 1
-                else:
-                    print(f"recorded {self.recorder.session_recording_count} frames")
-                    self.recorder.is_recording = False
-                    self.recorder.add_video_data()
-                    self.recorder.session_recording_count = 0
-
-        elif self.mode == AppMode.PREDICTING:
-            self.prediction_mode_display(results)
-        self.update_fps()
-
-        # actual display part
-        w = self.labelVideoFeed.width()
-        h = self.labelVideoFeed.height()
-        pixmap = convert_cv_to_pixmap(final_frame)
-        
-        self.labelVideoFeed.setPixmap(pixmap)
-
-    def start_camera(self):
+    def _start_camera(self):
         if not self.camera_thread:
             self.camera_thread = Camera()
-            self.camera_thread.frame_captured.connect(self.process_frame_stream)
+            self.camera_thread.frame_captured.connect(self._process_frame_stream)
             self.camera_thread.start()
             self._start_time = time.time()
             self._frame_count = 0
 
-    def stop_camera(self):
+    def _stop_camera(self):
         if self.camera_thread:
-            self.camera_thread.frame_captured.disconnect(self.process_frame_stream)
+            self.camera_thread.frame_captured.disconnect(self._process_frame_stream)
             self.camera_thread.stop()
             self.camera_thread.wait()
             self.camera_thread = None
@@ -182,6 +158,38 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         self.labelVideoFeed.setText("Camera Offline")
         self.labelFPS.setText("FPS: --")
         self.recorder.reset()
+
+    def _process_frame_stream(self, raw_frame: np.ndarray):
+        """
+        Slot to process each captured frame from the camera thread and send it to the video feed label
+
+        :param raw_frame: The raw captured frame from the camera as a NumPy array
+        """
+
+        final_frame, results = self.vision.process_frame(raw_frame)
+
+        # parse all mediapipe frame results to the recorder
+        self.recorder.current_results = results
+
+        # custom mode output
+        # if self.mode == AppMode.COLLECTING:
+        #     # check for live recording
+        #     if self.recorder.is_recording:
+        #         if self.recorder.session_recording_count < 30:
+        #             self.recorder.add_frame_to_current_video(results)
+        #             self.recorder.session_recording_count += 1
+        #         else:
+        #             print(f"recorded {self.recorder.session_recording_count} frames")
+        #             self.recorder.is_recording = False
+        #             self.recorder.add_video_data()
+        #             self.recorder.session_recording_count = 0
+
+        # elif self.mode == AppMode.PREDICTING:
+            # self.prediction_mode_display(results)
+        self.update_fps()
+
+        pixmap = convert_cv_to_pixmap(final_frame)
+        self.labelVideoFeed.setPixmap(pixmap)
 
     def prediction_mode_display(self, results):
         if not results.multi_hand_landmarks:
@@ -239,7 +247,7 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
                 self.recorder.scope = "static"
             elif event.key() == Qt.Key.Key_N:
                 self.recorder.scope = "noise"
-            self.recorder.pick_data_file()
+            self.recorder.pick_recording_type()
             self.labelCurrentPrediction.setText("Press enter to start recording")
 
         # stage 2
