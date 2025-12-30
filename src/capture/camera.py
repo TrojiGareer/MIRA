@@ -19,8 +19,8 @@ class Camera(QThread):
         self._capture = None
 
     def run(self):
-        # 1. Set higher resolution (Fixes Blurriness)
         self._capture = cv2.VideoCapture(self._camera_index)
+
         # Try to set HD resolution (1280x720). If camera doesn't support it, it uses closest match.
         self._capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         self._capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
@@ -34,7 +34,7 @@ class Camera(QThread):
         self._is_running = True
 
         while self._is_running and self._capture.isOpened():
-            # 2. Read frame (This effectively 'sleeps' until hardware has a new frame)
+            # Read frame (This effectively 'sleeps' until hardware has a new frame)
             ret, frame = self._capture.read()
 
             if ret:
@@ -47,5 +47,6 @@ class Camera(QThread):
         
     def stop(self):
         """Safely stops the thread loop and waits for termination."""
+        
         self._is_running = False
         self.wait() # Wait for the run method to complete its cleanup

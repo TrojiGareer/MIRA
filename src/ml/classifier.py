@@ -97,6 +97,3 @@ class Classifier:
             
             fingers.append(crt_finger)
         return fingers
-
-
-    

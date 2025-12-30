@@ -1,6 +1,6 @@
 import csv
 import os
-from preprocess.landmark_extractor import process_dataset
+from preprocess import process_dataset
 
 class Recorder:
     # initialize the object and the file if it doesnt exist

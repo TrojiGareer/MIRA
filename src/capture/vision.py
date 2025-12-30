@@ -1,13 +1,14 @@
-import mediapipe as mp
-import numpy as np
 import cv2
-from PyQt6.QtGui import QImage, QPixmap
-from PyQt6.QtCore import Qt
+import numpy as np
+import mediapipe as mp
 
-# object responsible for everything image-related
 class Vision:
+    """
+    Preprocessing bridge between mediapipe hands and the live camera feed.
+    Puts the hands onto the feed
+    """
+
     def __init__(self):
-        # initialize mediapipe hands
         self.mp_hands = mp.solutions.hands
         self.hands = self.mp_hands.Hands(
             static_image_mode=False,
@@ -15,11 +16,22 @@ class Vision:
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5
         )
+
         self.mp_draw = mp.solutions.drawing_utils
         self.mp_styles = mp.solutions.drawing_styles
         
-    # function called every frame to create the ui return image and the mediapipe results
     def process_frame(self, frame:np.ndarray):
+        """
+        Puts the mediapipe hands vertices and skeleton on top of the recorded frame and flips the image
+        for better UX
+
+        :param self: the instance of the Vision class
+        :param frame: the frame to process, in openCV format (bgr)
+
+        :return frame: the processed frame with hands drawn on it, mirrored (bgr)
+        :return results: mediapipe results object from a frame
+        """
+
         # bgr->rgb for mediapipe
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -31,8 +43,15 @@ class Vision:
         frame = cv2.flip(frame, 1)
         return frame, results
 
-    # genuinley just draws the landmarks on the frame it gets called to
     def draw_landmarks(self, frame, results):
+        """
+        Draws the hands onto a frame
+
+        :param self: the instance of the Vision class
+        :param frame: the frame to draw on, in openCV format (bgr)
+        :param results: mediapipe results object from a frame
+        """
+
         for landmarks in results.multi_hand_landmarks:
             self.mp_draw.draw_landmarks(
                 frame,
@@ -41,12 +60,3 @@ class Vision:
                 self.mp_styles.get_default_hand_landmarks_style(),
                 self.mp_styles.get_default_hand_connections_style()
             )
-
-    # translator so that it can actually be in the ui
-    def convert_cv_to_pixmap(self, frame: np.ndarray, width: int, height: int) -> QPixmap:
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        h, w, ch = frame_rgb.shape
-        q_img = QImage(frame_rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
-        
-        return QPixmap.fromImage(q_img)
-

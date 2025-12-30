@@ -1,21 +1,26 @@
-from PyQt6.QtGui import QPixmap, QImage
-from PyQt6.QtWidgets import QMainWindow, QStatusBar, QLabel
+from PyQt6.QtWidgets import QMainWindow, QLabel
 from PyQt6.uic.load_ui import loadUiType
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt
+
 import numpy as np
-import cv2
+
+from capture import Camera
+from capture import Vision
+
+from utils import convert_cv_to_pixmap
+from ml.train import Recorder
+from ml import Predictor
+from ml import Classifier
+
 import time
 import os
-from capture import Camera
-import mediapipe as mp
-import csv
-from utils.recorder import Recorder
-from interpreter import Interpreter
-from utils.vision import Vision
-from utils.classifier import Classifier
 from enum import Enum, auto
 
 class AppMode(Enum):
+    """
+    Application modes enum class for M.I.R.A.
+    """
+
     IDLE = auto()
     COLLECTING = auto()
     PREDICTING = auto()
@@ -70,7 +75,7 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         self.vision = Vision()
         self.classifier = Classifier()
         self.recorder = Recorder('../static_hand_data.csv', '../video_hand_data.csv', '../noise_hand_data.csv')
-        self.interpreter = Interpreter('model.p')
+        self.predictor = Predictor('model.p')
 
         self.listPredictionLog.setFixedWidth(300)
         self.labelCurrentPrediction.setFixedWidth(500)
@@ -155,7 +160,7 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         # actual display part
         w = self.labelVideoFeed.width()
         h = self.labelVideoFeed.height()
-        pixmap = self.vision.convert_cv_to_pixmap(final_frame, w, h)
+        pixmap = convert_cv_to_pixmap(final_frame)
         
         self.labelVideoFeed.setPixmap(pixmap)
 
@@ -192,7 +197,7 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         self.last_prediction_time = current_time
 
         # change this line to update the real-time prediction while debugging
-        gesture_id = self.interpreter.predict(results)
+        gesture_id = self.predictor.predict(results)
         current_gesture = str(gesture_id) 
         self.classifier.past_half_second_frames = []
 
