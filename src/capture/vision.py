@@ -9,7 +9,7 @@ class Vision:
     """
 
     def __init__(self):
-        self.mp_hands = mp.solutions.hands
+        self.mp_hands = mp.solutions.hands # type: ignore (runtime only)
         self.hands = self.mp_hands.Hands(
             static_image_mode=False,
             max_num_hands=2,
@@ -17,8 +17,8 @@ class Vision:
             min_tracking_confidence=0.5
         )
 
-        self.mp_draw = mp.solutions.drawing_utils
-        self.mp_styles = mp.solutions.drawing_styles
+        self.mp_draw = mp.solutions.drawing_utils # type: ignore (runtime only)
+        self.mp_styles = mp.solutions.drawing_styles # type: ignore (runtime only)
         
     def process_frame(self, frame:np.ndarray):
         """

@@ -3,6 +3,14 @@ import os
 from PyQt6.QtWidgets import QApplication
 from ui import MainWindow
 
+import warnings
+
+# Silence protobuf deprecation
+warnings.filterwarnings(
+    "ignore",
+    message="SymbolDatabase.GetPrototype\\(\\) is deprecated"
+)
+
 def load_styles(app : QApplication):
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     CSS_PATH = os.path.join(BASE_DIR, 'ui', 'style.css')

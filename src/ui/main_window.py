@@ -1,22 +1,22 @@
 from PyQt6.QtWidgets import QMainWindow, QLabel
 from PyQt6.uic.load_ui import loadUiType
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QKeyEvent
 
 import numpy as np
 
 import time
 from enum import Enum, auto
 
-from capture import Camera
-from capture import Vision
+from capture import Camera, Vision
 from ml import Predictor
-from ml import Classifier
-from ml.train import Recorder
+from ml.train import Recorder, RecordingType
 
 from utils import (
     convert_cv_to_pixmap,
     UI_FILE_PATH,
-    STATIC_MODEL_PATH
+    STATIC_MODEL_PATH,
+    STATIC_GESTURE_TRAINING_DATA_PATH
 )
 
 
@@ -46,9 +46,6 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
     The LSP can identify the two superclasses of MainWindow as nonexisting but they are created at runtime
     """
 
-    _frame_count = 0
-    _start_time = 0.0
-
     def __init__(self):
         super().__init__()
         self.mode = AppMode.IDLE
@@ -58,11 +55,18 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         self.setWindowTitle("M.I.R.A. – Motion Interpretation Remote Assistant")
         self._initialize_components()
 
-        self.camera_thread = None
-        self.vision = Vision()
-        self.classifier = Classifier()
-        self.recorder = Recorder()
-        self.predictor = Predictor(STATIC_MODEL_PATH)
+        self.camera_thread : Camera | None = None
+        
+        self._vision = Vision()
+        self._recorder = Recorder()
+        self._predictor = Predictor(STATIC_MODEL_PATH)
+
+        # A very sludgy FPS counting system variables
+        self._frame_count = 0
+        self._start_time = 0.0
+
+        self._last_prediction_time = 0.0
+        self._last_gesture = ""
 
     def _initialize_components(self):
         """
@@ -85,7 +89,7 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         self.labelInterpreterStatus = QLabel("Interpreter: Offline")
         self.statusbar.addPermanentWidget(self.labelInterpreterStatus)
 
-        # Connect signals
+        # Connect buttons
         self.buttonStartMIRA.clicked.connect(self._toggle_mira)
         self.buttonStartTraining.clicked.connect(self._toggle_data_collection)
 
@@ -104,47 +108,40 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
 
             self._start_camera()
             self.mode = AppMode.PREDICTING
+            self.listPredictionLog.clear()
             self.buttonStartMIRA.setText("Stop M.I.R.A.")
             self.labelInterpreterStatus.setText("Interpreter: Online") 
             
         else:
-            self.stop_camera()
+            self._stop_camera()
             self.mode = AppMode.IDLE
             self.buttonStartMIRA.setText("Start M.I.R.A.")
             self.labelInterpreterStatus.setText("Interpreter: Offline")
-            self.listPredictionLog.clear()
 
     def _toggle_data_collection(self):
         if not self.mode == AppMode.COLLECTING:
             # if in prediction mode, stop and restart in collection mode
             if self.mode == AppMode.PREDICTING:
-                self.toggle_mira()
-            self.start_camera()
+                self._toggle_mira()
+            self._start_camera()
+            self._recorder.reset()
             self.buttonStartTraining.setText("Stop Data Collection")
-            self.labelCurrentPredictionText.setText("Label: ")
-            self.labelCurrentPrediction.setText("type label to start")
-            self.buttonExecutePrediction.setText("Done")
             self.mode = AppMode.COLLECTING
 
-            # start listening and collecting
-            self.setFocus()
+            self._recorder.pick_recording_type(RecordingType.STATIC)
 
         else:
-            self.stop_camera()            
-            self.buttonStartTraining.setText("Start Data Collection")
-            self.labelCurrentPredictionText.setText("Current Prediction: ")
+            self._stop_camera()            
             self.labelCurrentPrediction.setText("-")
-            self.buttonExecutePrediction.setText("Execute")
+            self.buttonStartTraining.setText("Start Data Collection")
             self.mode = AppMode.IDLE
-            self.recorder.current_gesture = ""
-            self.recorder.is_stage_2_recording = False
-            self.recorder.recordings = 0
 
     def _start_camera(self):
         if not self.camera_thread:
             self.camera_thread = Camera()
             self.camera_thread.frame_captured.connect(self._process_frame_stream)
             self.camera_thread.start()
+
             self._start_time = time.time()
             self._frame_count = 0
 
@@ -152,12 +149,11 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         if self.camera_thread:
             self.camera_thread.frame_captured.disconnect(self._process_frame_stream)
             self.camera_thread.stop()
-            self.camera_thread.wait()
             self.camera_thread = None
+
         self.labelVideoFeed.clear()
         self.labelVideoFeed.setText("Camera Offline")
         self.labelFPS.setText("FPS: --")
-        self.recorder.reset()
 
     def _process_frame_stream(self, raw_frame: np.ndarray):
         """
@@ -166,13 +162,12 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         :param raw_frame: The raw captured frame from the camera as a NumPy array
         """
 
-        final_frame, results = self.vision.process_frame(raw_frame)
+        final_frame, results = self._vision.process_frame(raw_frame)
 
-        # parse all mediapipe frame results to the recorder
-        self.recorder.current_results = results
 
-        # custom mode output
-        # if self.mode == AppMode.COLLECTING:
+        if self.mode == AppMode.COLLECTING:
+            self._recorder.current_results = results
+                
         #     # check for live recording
         #     if self.recorder.is_recording:
         #         if self.recorder.session_recording_count < 30:
@@ -184,87 +179,93 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         #             self.recorder.add_video_data()
         #             self.recorder.session_recording_count = 0
 
-        # elif self.mode == AppMode.PREDICTING:
-            # self.prediction_mode_display(results)
+        elif self.mode == AppMode.PREDICTING:
+            self._predict_and_display(results)
+
         self.update_fps()
 
         pixmap = convert_cv_to_pixmap(final_frame)
         self.labelVideoFeed.setPixmap(pixmap)
 
-    def prediction_mode_display(self, results):
+    def _predict_and_display(self, results):
         if not results.multi_hand_landmarks:
             self.labelCurrentPrediction.setText("No Hand")
-            self.last_gesture = "No Hand"
             return
 
         current_time = time.time()
-        if current_time - self.last_prediction_time < 0.3:
-            self.classifier.past_half_second_frames.append(results)
+        if current_time - self._last_prediction_time < 0.5:
             return
 
-        self.last_prediction_time = current_time
+        self._last_prediction_time = current_time
 
-        # change this line to update the real-time prediction while debugging
-        gesture_id = self.predictor.predict(results)
-        current_gesture = str(gesture_id) 
-        self.classifier.past_half_second_frames = []
+        gesture_id = self._predictor.predict(results)
+        current_gesture = str(gesture_id)
 
         self.labelCurrentPrediction.setText(current_gesture)
 
-        if current_gesture != self.last_gesture:
-            self.listPredictionLog.insertItem(0, current_gesture)
-            
-            if self.listPredictionLog.count() > 10:
-                self.listPredictionLog.takeItem(10)
+        if current_gesture != self._last_gesture:
+            self.listPredictionLog.addItem(current_gesture)
         
-        self.last_gesture = current_gesture
+        self._last_gesture = current_gesture
 
-    def keyPressEvent(self, event):
-        # respond to stage one of data recording, which is label input
-        if not self.recorder.is_stage_2_recording:
-            # delete keys if u made a typo
-            if event.key() == Qt.Key.Key_Backspace:
-                self.recorder.current_gesture = self.recorder.current_gesture[:-1]
-                self.labelCurrentPrediction.setText(self.recorder.current_gesture)
+    def keyPressEvent(self, event : QKeyEvent):
+        """
+        Temporary method for testing data recording from the main window
+        """
 
-            # next recording stage
-            elif event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
-                self.recorder.is_stage_2_recording = True
-                print("Label: " + self.recorder.current_gesture)
-                self.labelCurrentPredictionText.setText("Recording for ~" + self.recorder.current_gesture + "~")
-                self.labelCurrentPrediction.setText("Video, static or noise recognition?[v/s/n]")
+        print("Key pressed: " + str(event.key()))
+        if event.key() == Qt.Key.Key_R and self.mode == AppMode.COLLECTING:
+            test_label = "test_gesture"
+            self._recorder.save_gesture(test_label, self._recorder.current_results)
 
-            # print keys as the user types them
-            elif event.text().isprintable() and event.text():
-                self.recorder.current_gesture += event.text()
-                self.labelCurrentPrediction.setText(self.recorder.current_gesture)
 
-        # stage 2 scope determination
-        elif self.recorder.is_stage_2_recording and self.recorder.scope == "unknown":
-            if event.key() == Qt.Key.Key_V:
-                self.recorder.scope = "video"
-            elif event.key() == Qt.Key.Key_S:
-                self.recorder.scope = "static"
-            elif event.key() == Qt.Key.Key_N:
-                self.recorder.scope = "noise"
-            self.recorder.pick_recording_type()
-            self.labelCurrentPrediction.setText("Press enter to start recording")
+    # I mean wtf is ts
+    # def keyPressEvent(self, event):
+    #     # respond to stage one of data recording, which is label input
+    #     if not self.recorder.is_stage_2_recording:
+    #         # delete keys if u made a typo
+    #         if event.key() == Qt.Key.Key_Backspace:
+    #             self.recorder.current_gesture = self.recorder.current_gesture[:-1]
+    #             self.labelCurrentPrediction.setText(self.recorder.current_gesture)
 
-        # stage 2
-        else:
-            if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
-                if self.recorder.current_results is None:
-                    print("no hand on the screen")
-                    self.labelCurrentPrediction.setText("No hand detected!") 
-                    return
+    #         # next recording stage
+    #         elif event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
+    #             self.recorder.is_stage_2_recording = True
+    #             print("Label: " + self.recorder.current_gesture)
+    #             self.labelCurrentPredictionText.setText("Recording for ~" + self.recorder.current_gesture + "~")
+    #             self.labelCurrentPrediction.setText("Video, static or noise recognition?[v/s/n]")
 
-                if self.recorder.scope == "static":
-                    self.recorder.add_record(self.recorder.current_gesture, self.recorder.current_results)
-                else:
-                    # start recording video
-                    self.recorder.is_recording = True
-                self.recorder.recordings += 1
-                self.labelCurrentPrediction.setText(f"Recordings: {self.recorder.recordings}")
+    #         # print keys as the user types them
+    #         elif event.text().isprintable() and event.text():
+    #             self.recorder.current_gesture += event.text()
+    #             self.labelCurrentPrediction.setText(self.recorder.current_gesture)
+
+    #     # stage 2 scope determination
+    #     elif self.recorder.is_stage_2_recording and self.recorder.scope == "unknown":
+    #         if event.key() == Qt.Key.Key_V:
+    #             self.recorder.scope = "video"
+    #         elif event.key() == Qt.Key.Key_S:
+    #             self.recorder.scope = "static"
+    #         elif event.key() == Qt.Key.Key_N:
+    #             self.recorder.scope = "noise"
+    #         self.recorder.pick_recording_type()
+    #         self.labelCurrentPrediction.setText("Press enter to start recording")
+
+    #     # stage 2
+    #     else:
+    #         if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
+    #             if self.recorder.current_results is None:
+    #                 print("no hand on the screen")
+    #                 self.labelCurrentPrediction.setText("No hand detected!") 
+    #                 return
+
+    #             if self.recorder.scope == "static":
+    #                 self.recorder.add_record(self.recorder.current_gesture, self.recorder.current_results)
+    #             else:
+    #                 # start recording video
+    #                 self.recorder.is_recording = True
+    #             self.recorder.recordings += 1
+    #             self.labelCurrentPrediction.setText(f"Recordings: {self.recorder.recordings}")
 
     def update_fps(self):
         self._frame_count += 1

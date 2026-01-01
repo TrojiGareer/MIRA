@@ -15,9 +15,7 @@ class RecordingType(Enum):
     """
     NONE = auto()
     STATIC = auto()
-    STATIC_NOISE = auto()
     DYNAMIC = auto()
-    DYNAMIC_NOISE = auto()
 
 class Recorder:
     """
@@ -41,6 +39,7 @@ class Recorder:
         # Assert the data type for static type checking
         self.current_working_file : str
         self.current_recording_type : RecordingType
+        self.current_results = None
 
         self._ensure_headers_exist()
     
@@ -80,7 +79,7 @@ class Recorder:
         Public method to save a labeled gesture based on the current recording type
         """
 
-        if self.current_recording_type == RecordingType.STATIC or self.current_recording_type == RecordingType.STATIC_NOISE:
+        if self.current_recording_type == RecordingType.STATIC:
             self._save_static_gesture(label, results)
         else:
             print("Warning: Dynamic gesture recording not yet implemented.")

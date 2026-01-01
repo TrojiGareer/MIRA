@@ -5,6 +5,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
 from utils import (
     STATIC_GESTURE_TRAINING_DATA_PATH,
     DYNAMIC_GESTURE_TRAINING_DATA_PATH,
@@ -32,7 +35,7 @@ def _train_static_model():
 
     # Split the training data into the one fed to the model and the one testing it
     # 80% training, 20% accuracy testing
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, stratify=y)
+    X_train, X_test, y_train, y_test = train_test_split(X.values, y.values, test_size=0.2, shuffle=True, stratify=y)
 
     model = RandomForestClassifier()
     # The actual training
@@ -58,3 +61,6 @@ def train_models():
 
     # Future implementation for dynamic model training can be added here
     print("Dynamic hand gesture model training not yet implemented.")
+
+if __name__ == "__main__":
+    train_models()
