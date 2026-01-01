@@ -1,0 +1,1 @@
+from .camera_feed_widget import CameraFeedWidget
