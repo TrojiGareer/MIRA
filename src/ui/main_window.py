@@ -90,8 +90,8 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         self.statusbar.addPermanentWidget(self.labelInterpreterStatus)
 
         # Connect buttons
-        self.buttonStartMIRA.clicked.connect(self._toggle_mira)
-        self.buttonStartTraining.clicked.connect(self._toggle_data_collection)
+        # self.buttonStartMIRA.clicked.connect(self._toggle_mira)
+        # self.buttonStartTraining.clicked.connect(self._toggle_data_collection)
 
         self.statusbar.showMessage("Successfully loaded!", 2000)
         print("INFO: Components initalized successfully!")

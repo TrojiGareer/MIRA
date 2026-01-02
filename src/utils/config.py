@@ -4,6 +4,7 @@ UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
 SRC_DIR = os.path.dirname(UTILS_DIR)
 
 UI_DIR = os.path.join(SRC_DIR, "ui")
+STYLESHEET_PATH = os.path.join(UI_DIR, "style.qss")
 UI_FILE_PATH = os.path.join(UI_DIR, "main_window.ui")
 
 ML_DIR = os.path.join(SRC_DIR, "ml")
