@@ -5,7 +5,7 @@ SRC_DIR = os.path.dirname(UTILS_DIR)
 
 UI_DIR = os.path.join(SRC_DIR, "ui")
 STYLESHEET_PATH = os.path.join(UI_DIR, "style.qss")
-UI_FILE_PATH = os.path.join(UI_DIR, "main_window.ui")
+WIDGETS_DIR = os.path.join(UI_DIR, "widgets")
 
 ML_DIR = os.path.join(SRC_DIR, "ml")
 STATIC_MODEL_PATH = os.path.join(ML_DIR, "static_model.p")

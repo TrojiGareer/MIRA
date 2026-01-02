@@ -1,5 +1,4 @@
 from PyQt6.QtWidgets import QMainWindow, QLabel
-from PyQt6.uic.load_ui import loadUiType
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeyEvent
 
@@ -14,10 +13,11 @@ from ml.train import Recorder, RecordingType
 
 from utils import (
     convert_cv_to_pixmap,
-    UI_FILE_PATH,
     STATIC_MODEL_PATH,
     STATIC_GESTURE_TRAINING_DATA_PATH
 )
+
+from .auto_main_window import Ui_MainWindow
 
 
 class AppMode(Enum):
@@ -29,18 +29,7 @@ class AppMode(Enum):
     COLLECTING = auto()
     PREDICTING = auto()
 
-# The UI is dynamically loaded
-try:
-    Ui_MainWindow, QtBaseClass = loadUiType(UI_FILE_PATH)
-except FileNotFoundError:
-    print(f"ERROR: UI file not found at {UI_FILE_PATH}. Check path and file name.")
-
-    # Use generic QMainWindow if UI file is missing to prevent crash
-    class Ui_MainWindow:
-        def setupUi(self, MainWindow): pass
-    QtBaseClass = QMainWindow
-
-class MainWindow(QtBaseClass, Ui_MainWindow):
+class MainWindow(QMainWindow, Ui_MainWindow):
     """
     The main application window, inheriting structure from the UI file.
     The LSP can identify the two superclasses of MainWindow as nonexisting but they are created at runtime
@@ -48,7 +37,6 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
 
     def __init__(self):
         super().__init__()
-        self.mode = AppMode.IDLE
         
         # UI setup
         self.setupUi(self)
@@ -67,6 +55,8 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
 
         self._last_prediction_time = 0.0
         self._last_gesture = ""
+
+        self.mode = AppMode.IDLE
 
     def _initialize_components(self):
         """
@@ -90,11 +80,17 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         self.statusbar.addPermanentWidget(self.labelInterpreterStatus)
 
         # Connect buttons
-        # self.buttonStartMIRA.clicked.connect(self._toggle_mira)
-        # self.buttonStartTraining.clicked.connect(self._toggle_data_collection)
+        self.widgetControlPanel.buttonStartMIRA.clicked.connect(self._toggle_mira)
+        self.widgetControlPanel.buttonStartTraining.clicked.connect(self._toggle_data_collection)
 
         self.statusbar.showMessage("Successfully loaded!", 2000)
         print("INFO: Components initalized successfully!")
+
+    def _clear_all(self):
+        """
+        Resets the application to the initial state. Clears all the filled data in the UI
+        """
+        self.widgetPredictions.clear()
 
     def _toggle_mira(self):
         """
@@ -108,14 +104,14 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
 
             self._start_camera()
             self.mode = AppMode.PREDICTING
-            self.listPredictionLog.clear()
-            self.buttonStartMIRA.setText("Stop M.I.R.A.")
+            self._clear_all()
+            self.widgetControlPanel.buttonStartMIRA.setText("Stop M.I.R.A.")
             self.labelInterpreterStatus.setText("Interpreter: Online") 
             
         else:
             self._stop_camera()
             self.mode = AppMode.IDLE
-            self.buttonStartMIRA.setText("Start M.I.R.A.")
+            self.widgetControlPanel.buttonStartMIRA.setText("Start M.I.R.A.")
             self.labelInterpreterStatus.setText("Interpreter: Offline")
 
     def _toggle_data_collection(self):
@@ -125,15 +121,15 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
                 self._toggle_mira()
             self._start_camera()
             self._recorder.reset()
-            self.buttonStartTraining.setText("Stop Data Collection")
+            self.widgetControlPanel.buttonStartTraining.setText("Stop Data Collection")
             self.mode = AppMode.COLLECTING
 
             self._recorder.pick_recording_type(RecordingType.STATIC)
 
         else:
-            self._stop_camera()            
-            self.labelCurrentPrediction.setText("-")
-            self.buttonStartTraining.setText("Start Data Collection")
+            self._stop_camera()
+            self.widgetPredictions.clear()
+            self.widgetControlPanel.buttonStartTraining.setText("Start Data Collection")
             self.mode = AppMode.IDLE
 
     def _start_camera(self):
@@ -151,8 +147,7 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
             self.camera_thread.stop()
             self.camera_thread = None
 
-        self.labelVideoFeed.clear()
-        self.labelVideoFeed.setText("Camera Offline")
+        self.widgetCameraFeed.clear()
         self.labelFPS.setText("FPS: --")
 
     def _process_frame_stream(self, raw_frame: np.ndarray):
@@ -185,7 +180,7 @@ class MainWindow(QtBaseClass, Ui_MainWindow):
         self.update_fps()
 
         pixmap = convert_cv_to_pixmap(final_frame)
-        self.labelVideoFeed.setPixmap(pixmap)
+        self.widgetCameraFeed.labelCameraFeed.setPixmap(pixmap)
 
     def _predict_and_display(self, results):
         if not results.multi_hand_landmarks:

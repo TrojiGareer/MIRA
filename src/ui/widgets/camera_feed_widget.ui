@@ -32,7 +32,7 @@
          </sizepolicy>
         </property>
         <property name="text">
-         <string>Camera not active</string>
+         <string>Camera offline</string>
         </property>
        </widget>
       </item>

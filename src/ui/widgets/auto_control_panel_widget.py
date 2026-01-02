@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file './src/ui/widgets/control_panel_widget.ui'
+# Form implementation generated from reading ui file '/home/zargo/Proiecte/M.I.R.A./src/ui/widgets/control_panel_widget.ui'
 #
 # Created by: PyQt6 UI code generator 6.10.1
 #

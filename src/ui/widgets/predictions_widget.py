@@ -5,3 +5,7 @@ class PredictionsWidget(QWidget, Ui_widgetPredictions):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
+
+    def clear(self):
+        self.listPredictionLog.clear()
+        self.labelCurrentPrediction.setText("-")

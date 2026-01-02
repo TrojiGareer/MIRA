@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file './src/ui/widgets/camera_feed_widget.ui'
+# Form implementation generated from reading ui file '/home/zargo/Proiecte/M.I.R.A./src/ui/widgets/camera_feed_widget.ui'
 #
 # Created by: PyQt6 UI code generator 6.10.1
 #
@@ -37,4 +37,4 @@ class Ui_widgetCameraFeed(object):
     def retranslateUi(self, widgetCameraFeed):
         _translate = QtCore.QCoreApplication.translate
         widgetCameraFeed.setWindowTitle(_translate("widgetCameraFeed", "Form"))
-        self.labelCameraFeed.setText(_translate("widgetCameraFeed", "Camera not active"))
+        self.labelCameraFeed.setText(_translate("widgetCameraFeed", "Camera offline"))
