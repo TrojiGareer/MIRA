@@ -1,2 +1,3 @@
 class Executor:
-    test = 1
+    def __init__(self):
+        print("WARNING: Executor not yet implemented")

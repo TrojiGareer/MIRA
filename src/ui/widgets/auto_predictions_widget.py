@@ -40,6 +40,7 @@ class Ui_widgetPredictions(object):
         self.layoutCurrentPrediction.addWidget(self.buttonExecutePrediction, 0, QtCore.Qt.AlignmentFlag.AlignHCenter|QtCore.Qt.AlignmentFlag.AlignTop)
         self.horizontalLayout_2.addLayout(self.layoutCurrentPrediction)
         self.listPredictionLog = QtWidgets.QListWidget(parent=widgetPredictions)
+        self.listPredictionLog.setMinimumSize(QtCore.QSize(300, 100))
         self.listPredictionLog.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.NoSelection)
         self.listPredictionLog.setItemAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.listPredictionLog.setObjectName("listPredictionLog")
