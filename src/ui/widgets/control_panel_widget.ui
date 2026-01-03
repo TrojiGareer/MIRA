@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0,0,0,0,0,0">
    <property name="spacing">
     <number>10</number>
    </property>
@@ -96,15 +96,41 @@
      </item>
     </widget>
    </item>
-   <item alignment="Qt::AlignHCenter|Qt::AlignTop">
-    <widget class="QLineEdit" name="lineEditGestureLabel">
-     <property name="text">
-      <string/>
+   <item>
+    <layout class="QHBoxLayout" name="layoutRecording" stretch="2,1">
+     <property name="spacing">
+      <number>10</number>
      </property>
-     <property name="placeholderText">
-      <string>Gesture Label</string>
+     <property name="leftMargin">
+      <number>10</number>
      </property>
-    </widget>
+     <property name="topMargin">
+      <number>10</number>
+     </property>
+     <property name="rightMargin">
+      <number>10</number>
+     </property>
+     <property name="bottomMargin">
+      <number>10</number>
+     </property>
+     <item alignment="Qt::AlignVCenter">
+      <widget class="QLineEdit" name="lineEditGestureLabel">
+       <property name="text">
+        <string/>
+       </property>
+       <property name="placeholderText">
+        <string>Gesture Label</string>
+       </property>
+      </widget>
+     </item>
+     <item alignment="Qt::AlignVCenter">
+      <widget class="QPushButton" name="buttonSaveRecord">
+       <property name="text">
+        <string>Record</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item alignment="Qt::AlignHCenter|Qt::AlignTop">
     <widget class="QPushButton" name="buttonStartTraining">
@@ -133,13 +159,6 @@
     </widget>
    </item>
    <item>
-    <widget class="Line" name="lineTrainingSeparator">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-   </item>
-   <item>
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -147,10 +166,17 @@
      <property name="sizeHint" stdset="0">
       <size>
        <width>20</width>
-       <height>287</height>
+       <height>40</height>
       </size>
      </property>
     </spacer>
+   </item>
+   <item>
+    <widget class="Line" name="lineTrainingSeparator">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

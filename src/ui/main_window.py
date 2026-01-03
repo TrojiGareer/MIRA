@@ -60,6 +60,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Control panel connections
         self.widgetControlPanel.inference_toggle_requested.connect(self._toggle_inference)
         self.widgetControlPanel.collection_toggle_requested.connect(self._toggle_data_collection)
+        self.widgetControlPanel.status_msg_signal.connect(self.statusbar.showMessage)
+        self.widgetControlPanel.model_reload_requested.connect(
+            self.widgetPredictions.reload_models
+        )
 
         self.statusbar.showMessage("UI initialized!", 2000)
         print("INFO: UI initialized successfully!")
@@ -91,9 +95,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.widgetCameraFeed.stop_camera()
             self.widgetPredictions.labelCurrentPrediction.clear()
-            self.mode = AppMode.IDLE
             self.widgetControlPanel.buttonStartMIRA.setText("Start M.I.R.A.")
             self.labelInterpreterStatus.setText("Interpreter: Offline")
+            self.labelFPS.setText("FPS: --")
+            self.mode = AppMode.IDLE
     
     def _toggle_data_collection(self):
         """
@@ -114,6 +119,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.widgetCameraFeed.stop_camera()
             self.widgetControlPanel.clear()
             self.widgetControlPanel.buttonStartTraining.setText("Start Data Collection")
+            self.labelFPS.setText("FPS: --")
             self.mode = AppMode.IDLE
     
     def _handle_frame_results(self, results):
@@ -127,7 +133,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.mode == AppMode.PREDICTING:
             self.widgetPredictions.predict_and_display(results)
         elif self.mode == AppMode.COLLECTING:
-            self.widgetControlPanel.handle_frame_results(results)
+            self.widgetControlPanel.collect_frame(results)
     
     def _update_fps(self, curr_fps : int):
         """

@@ -23,11 +23,11 @@ def _train_static_model():
         data = pd.read_csv(STATIC_GESTURE_TRAINING_DATA_PATH)
     except FileNotFoundError:
         print(f"Error: {STATIC_GESTURE_TRAINING_DATA_PATH} not found! Go collect some data first.")
-        exit()
+        return
 
     if data.empty:
         print(f"Error: {STATIC_GESTURE_TRAINING_DATA_PATH} is empty! Go collect some data first.")
-        exit()
+        return
 
     # x is a matrix of data, y is a vector of labels
     X = data.drop('label', axis=1)
@@ -55,12 +55,16 @@ def train_models():
     Trains the static and dynamic hand gesture models with a given dataset and saves the trained models
     """
 
+    print("====== Starting model training ======")
+
     print("Training static hand gesture model...")
     _train_static_model()
     print("Static hand gesture model trained and saved.")
 
     # Future implementation for dynamic model training can be added here
     print("Dynamic hand gesture model training not yet implemented.")
+
+    print("====== Model training completed ======")
 
 if __name__ == "__main__":
     train_models()

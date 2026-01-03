@@ -28,6 +28,13 @@ class PredictionsWidget(QWidget, Ui_widgetPredictions):
 
         self._last_gesture = ""
         self._last_prediction_time = 0.0
+    
+    def reload_models(self):
+        try:
+            self._predictor = Predictor(STATIC_MODEL_PATH)
+            print("INFO: reloaded models")
+        except Exception as e:
+            print(f"Error reloading models: {e}")
 
     def predict_and_display(self, results):
         if not results.multi_hand_landmarks:

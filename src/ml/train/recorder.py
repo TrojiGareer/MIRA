@@ -32,16 +32,23 @@ class Recorder:
 
         # Mapping of recording types to their respective filenames
         self.file_map = {
+            RecordingType.NONE: "",
             RecordingType.STATIC: STATIC_GESTURE_TRAINING_DATA_PATH,
             RecordingType.DYNAMIC: DYNAMIC_GESTURE_TRAINING_DATA_PATH,
         }
 
         # Assert the data type for static type checking
         self.current_working_file : str
-        self.current_recording_type : RecordingType
-        self.current_results = None
+
+        self.current_recording_type = RecordingType.NONE
+        self._buffer = []
 
         self._ensure_headers_exist()
+    
+    def reset(self):
+        self.current_working_file = ""
+        self.current_recording_type = RecordingType.NONE
+        self._buffer = []
     
     def _ensure_headers_exist(self):
         """
@@ -63,26 +70,48 @@ class Recorder:
         
         # Create files with headers if they do not exist
         for gesture_type, filepath in self.file_map.items():
-            if not os.path.exists(filepath):
+            if not os.path.exists(filepath) and gesture_type != RecordingType.NONE:
                 with open(filepath, mode='w', newline='') as f:
                     writer = csv.writer(f)
                     writer.writerow(headers[gesture_type])
 
     def pick_recording_type(self, recording_type: RecordingType):
+        self.reset()
         self.current_recording_type = recording_type
         self.current_working_file = self.file_map[recording_type]
 
         print("INFO: Current recording type: " + str(self.current_recording_type))
+    
+    def add_frame(self, results):
+        """
+        Adds a frame's landmark results to the recording buffer
 
-    def save_gesture(self, label, results):
+        :param results: The processed landmark results from the vision module
+        """
+
+        if self.current_recording_type == RecordingType.STATIC:
+            self._buffer = [results] # only one frame needed
+        elif self.current_recording_type == RecordingType.DYNAMIC:
+            self._buffer.append(results)
+            print("WARNING: Dynamic gesture recording not yet implemented.")
+        else:
+            print("ERROR: No recording type selected. Cannot add frame.")
+
+    def save_gesture(self, label):
         """
         Public method to save a labeled gesture based on the current recording type
         """
 
+        if not self._buffer:
+            print("ERROR: No frames recorded. Cannot save gesture.")
+            return
+
         if self.current_recording_type == RecordingType.STATIC:
-            self._save_static_gesture(label, results)
+            self._save_static_gesture(label, self._buffer[0])
+        elif self.current_recording_type == RecordingType.DYNAMIC:
+            print("WARNING: Dynamic gesture recording not yet implemented.")
         else:
-            print("Warning: Dynamic gesture recording not yet implemented.")
+            print("ERROR: No recording type selected. Cannot save gesture.")
 
     def _save_static_gesture(self, label, results):
         """
@@ -94,33 +123,8 @@ class Recorder:
         interpreted_data = process_dataset(results)
 
         with open(self.current_working_file, mode='a', newline='') as f:
+            if (f.tell() == 0):
+                print(f"Error: File {self.current_working_file} is empty. Cannot write data without headers.")
+                return
             writer = csv.writer(f)
             writer.writerow([label] + interpreted_data)
-    
-    # # process the 30 images into 10 and store them
-    # def add_video_data(self):
-    #     # make sure lag doesnt impact things
-    #     if len(self.video_frames_raw) < 30:
-    #         print(f"Error: Buffer underflow. Got {len(self.video_frames_raw)}/30 frames.")
-    #         self.video_frames_raw = []
-    #         self.session_recording_count = 0
-    #         return
-        
-    #     final_video_data = []
-    #     for i in range(0, 30, 3):
-    #         final_video_data.extend(self.video_frames_raw[i])
-
-    #     with open(self.filepath, mode='a', newline='') as f:
-    #         writer = csv.writer(f)
-    #         writer.writerow([self.current_gesture_label] + final_video_data)
-            
-    #     self.video_frames_raw = []
-    #     self.session_recording_count = 0
-
-    # def add_frame_to_current_video(self, results):
-    #     processed_raw_frame = process_dataset(results)
-    #     self.video_frames_raw.append(processed_raw_frame)
-
-    def reset(self):
-        self.current_working_file = ""
-        self.current_recording_type = RecordingType.NONE
