@@ -1,2 +1,3 @@
 class Mapper:
-    test = 1;
+    def __init__(self):
+        print("WARNING: Mapper not yet implemented")

@@ -1,0 +1,3 @@
+from .camera_feed_widget import CameraFeedWidget
+from .predictions_widget import PredictionsWidget
+from .control_panel_widget import ControlPanelWidget

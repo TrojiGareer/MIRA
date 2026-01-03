@@ -39,6 +39,11 @@ QPushButton {
 	font-size: 16pt;
 }
 
+QLineEdit {
+	font-size: 16pt;
+	padding: 5%;
+}
+
 QPushButton#buttonStartMIRA {
 	font-size: 20pt;
 	background-color: #4a106b;
