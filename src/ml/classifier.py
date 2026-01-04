@@ -45,13 +45,12 @@ class Classifier:
             self.crt_gesture = Gesture.DYNAMIC
             return "dynamic"
         else:
-            if finger_wiggle > 0.0005:
+            if finger_wiggle > 0.0008:
                 self.crt_gesture = Gesture.NOISE
                 return "noise"
             else:
                 self.crt_gesture = Gesture.STATIC
                 return "static"
-
 
 
     # steady hand and moving fingers is usually just sign transition
