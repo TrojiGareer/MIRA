@@ -9,6 +9,7 @@ WIDGETS_DIR = os.path.join(UI_DIR, "widgets")
 
 ML_DIR = os.path.join(SRC_DIR, "ml")
 STATIC_MODEL_PATH = os.path.join(ML_DIR, "static_model.p")
+DYNAMIC_MODEL_PATH = os.path.join(ML_DIR, "dynamic_model.p")
 
 TRAIN_DIR = os.path.join(ML_DIR, "train")
 DATA_DIR = os.path.join(TRAIN_DIR, "data")

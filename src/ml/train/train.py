@@ -12,22 +12,29 @@ from utils import (
     STATIC_GESTURE_TRAINING_DATA_PATH,
     DYNAMIC_GESTURE_TRAINING_DATA_PATH,
     STATIC_MODEL_PATH,
+    DYNAMIC_MODEL_PATH,
 )
 
-def _train_static_model():
+def _train_model(path, data_path):
     """
     Trains a Random Forest Classifier on the static hand gesture dataset and saves the trained model
     """
 
     try:
-        data = pd.read_csv(STATIC_GESTURE_TRAINING_DATA_PATH)
+        data = pd.read_csv(data_path)
     except FileNotFoundError:
-        print(f"Error: {STATIC_GESTURE_TRAINING_DATA_PATH} not found! Go collect some data first.")
+        print(f"Error: {data_path} not found! Go collect some data first.")
         return
 
     if data.empty:
-        print(f"Error: {STATIC_GESTURE_TRAINING_DATA_PATH} is empty! Go collect some data first.")
+        print(f"Error: {data_path} is empty! Go collect some data first.")
         return
+
+    model_type = ""
+    if path == STATIC_MODEL_PATH:
+        model_type = "static"
+    else:
+        model_type = "dynamic"
 
     # x is a matrix of data, y is a vector of labels
     X = data.drop('label', axis=1)
@@ -44,27 +51,21 @@ def _train_static_model():
     # Evaluate the accuracy
     y_predict = model.predict(X_test)
     score = accuracy_score(y_test, y_predict)
-    print(f"Static model accuracy: {score * 100:.2f}% ({score})")
+    print(f"{model_type} model accuracy: {score * 100:.2f}% ({score})")
 
     # Save the trained model
-    with open(STATIC_MODEL_PATH, 'wb') as f:
-        pickle.dump({'model': model}, f)
+    with open(path, 'wb') as f:
+        pickle.dump({'model' : model}, f)
 
 def train_models():
     """
     Trains the static and dynamic hand gesture models with a given dataset and saves the trained models
     """
 
-    print("====== Starting model training ======")
-
-    print("Training static hand gesture model...")
-    _train_static_model()
-    print("Static hand gesture model trained and saved.")
-
-    # Future implementation for dynamic model training can be added here
-    print("Dynamic hand gesture model training not yet implemented.")
-
-    print("====== Model training completed ======")
+    print("====== Starting models training ======")
+    _train_model(STATIC_MODEL_PATH, STATIC_GESTURE_TRAINING_DATA_PATH)
+    _train_model(DYNAMIC_MODEL_PATH, DYNAMIC_GESTURE_TRAINING_DATA_PATH)
+    print("====== Models training completed ======")
 
 if __name__ == "__main__":
     train_models()
