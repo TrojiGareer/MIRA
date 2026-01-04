@@ -2,10 +2,12 @@ import pickle
 import numpy as np
 
 from preprocess import process_dataset
+from ml import Classifier
 
 class Predictor:
     def __init__(self, model_path : str):
         self.load_model(model_path)
+        self._classifier = Classifier()
 
     def load_model(self, path):
         try:

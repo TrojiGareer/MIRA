@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import pyqtSignal
 
 from ml.train import Recorder, RecordingType, train_models
+from ml import Classifier
 
 from .auto_control_panel_widget import Ui_widgetControlPanel
 
@@ -16,6 +17,7 @@ class ControlPanelWidget(QWidget, Ui_widgetControlPanel):
         self.setupUi(self)
 
         self._recorder = Recorder()
+        self._classifier = Classifier()
 
         self.buttonStartMIRA.clicked.connect(self.inference_toggle_requested.emit)
         self.buttonStartTraining.clicked.connect(self.collection_toggle_requested.emit)

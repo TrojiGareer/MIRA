@@ -4,7 +4,52 @@ class Classifier:
     # calculates a score that allows it to decide whether or not a movement is noise or a gesture
     def __init__(self):
         self.score = 0
-        self.past_half_second_frames = []
+        self.past_20_frames = []
+        self.past_frame_count = 0
+        self.last_classification = 0
+
+    # called every frame, gathers the past 20 frames at all times
+    def update(self, results):
+        self.past_20_frames.append(results)
+        self.past_frame_count += 1
+
+        if self.past_frame_count > 20:
+            self.past_20_frames.pop(0)
+            # print(f"frames: {len(self.past_20_frames)}")
+            if (self.past_frame_count - self.last_classification) % 20 == 0:
+                self.last_classification = self.past_frame_count
+                movement = self.calculate_movement_type()
+                # print(f"current movement appears to be {movement}")
+
+    # dynamic movement will most likely involve the translation of the hand on screen
+    # static movement or signs is usually just moving of the fingers
+    def calculate_movement_type(self):
+        if len(self.past_20_frames) < 20:
+            return "noise"
+        
+        total_distance = 0
+        for i in range(19):
+            curr_res = self.past_20_frames[i]
+            next_res = self.past_20_frames[i+1]
+
+            # if for a frame the camera tweaked
+            if not (curr_res.multi_hand_landmarks and next_res.multi_hand_landmarks):
+                continue
+            
+            curr_wrist = curr_res.multi_hand_landmarks[0].landmark[0]
+            next_wrist = next_res.multi_hand_landmarks[0].landmark[0]
+
+            # distance the wrist moved the past 2 frames
+            step_dist = math.sqrt((next_wrist.x - curr_wrist.x)**2 + (next_wrist.y - curr_wrist.y)**2)
+            
+            total_distance += step_dist
+        
+        if total_distance > 0.4:
+            return "dynamic"
+        else:
+            return "static"
+
+
 
     # steady hand and moving fingers is usually just sign transition
     def finger_movement(self, landmarks):
@@ -52,10 +97,6 @@ class Classifier:
 
     # a hand holding a sign is usually pretty stable, jitters might indicate a data extraction error
     def stability(self, landmarks):
-        return
-
-    # update function
-    def update(self):
         return
 
     # determine if a specific finger is relaxed or not

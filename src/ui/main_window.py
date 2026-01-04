@@ -131,6 +131,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
 
         if self.mode == AppMode.PREDICTING:
+            self.widgetPredictions._predictor._classifier.update(results)
             self.widgetPredictions.predict_and_display(results)
         elif self.mode == AppMode.COLLECTING:
             self.widgetControlPanel.collect_frame(results)                

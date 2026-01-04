@@ -46,7 +46,7 @@ class PredictionsWidget(QWidget, Ui_widgetPredictions):
         if current_time - self._last_prediction_time < 1.0 / self._MAX_PREDICTIONS_PER_SECOND:
             return
 
-        gesture_id = self._predictor.predict(results)
+        gesture_id = self._predictor._classifier.calculate_movement_type()
         current_gesture = str(gesture_id)
 
         self.labelCurrentPrediction.setText(current_gesture)
