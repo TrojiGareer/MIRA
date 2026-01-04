@@ -6,7 +6,7 @@ from PyQt6.QtGui import QKeyEvent
 from enum import Enum, auto
 
 from .auto_main_window import Ui_MainWindow
-
+from ml.train.recorder import RecordingType
 
 class AppMode(Enum):
     """
@@ -133,7 +133,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.mode == AppMode.PREDICTING:
             self.widgetPredictions.predict_and_display(results)
         elif self.mode == AppMode.COLLECTING:
-            self.widgetControlPanel.collect_frame(results)
+            self.widgetControlPanel.collect_frame(results)                
     
     def _update_fps(self, curr_fps : int):
         """

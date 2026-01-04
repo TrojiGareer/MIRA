@@ -43,12 +43,20 @@ class Recorder:
         self.current_recording_type = RecordingType.NONE
         self._buffer = []
 
+        # added a recording buffer, for storing different types of input
+        self._video_buffer = []
+        self._video_frame_count = 0
+        self._recording_active = False
+        self._pending_label = ""
+
         self._ensure_headers_exist()
     
     def reset(self):
         self.current_working_file = ""
         self.current_recording_type = RecordingType.NONE
         self._buffer = []
+        self._video_buffer = []
+        self._video_frame_count = 0
     
     def _ensure_headers_exist(self):
         """
@@ -60,7 +68,7 @@ class Recorder:
 
         # Header of the dynamic/dynamic noise gestures file
         header_dynamic = ['label']
-        for j in range(10):
+        for j in range(30):
             header_dynamic += [f'frame_{j}_left_{i}' for i in range(42)] + [f'frame_{j}_right_{i}' for i in range(42)]
 
         headers = {
@@ -82,6 +90,7 @@ class Recorder:
 
         print("INFO: Current recording type: " + str(self.current_recording_type))
     
+    # this happens every frame
     def add_frame(self, results):
         """
         Adds a frame's landmark results to the recording buffer
@@ -90,26 +99,39 @@ class Recorder:
         """
 
         if self.current_recording_type == RecordingType.STATIC:
-            self._buffer = [results] # only one frame needed
+            self._buffer = [results]
+            
         elif self.current_recording_type == RecordingType.DYNAMIC:
-            self._buffer.append(results)
-            print("WARNING: Dynamic gesture recording not yet implemented.")
+            if self._recording_active:
+                crt_frames = process_dataset(results)
+                self._video_buffer.append(crt_frames)
+                self._video_frame_count += 1
+                print(f"Recorded {self._video_frame_count} / 30 frames")
+                
+                if len(self._video_buffer) >= 30:
+                    self._save_dynamic_gesture(self._pending_label)
+                    self._recording_active = False
+                    self._video_buffer = []
+                    self._video_frame_count = 0
+                    print(f"INFO: FINISHED recording sequence.")
         else:
             print("ERROR: No recording type selected. Cannot add frame.")
 
+    # this happens when user hits "record"
     def save_gesture(self, label):
         """
         Public method to save a labeled gesture based on the current recording type
         """
 
-        if not self._buffer:
-            print("ERROR: No frames recorded. Cannot save gesture.")
-            return
-
         if self.current_recording_type == RecordingType.STATIC:
+            if not self._buffer: return
             self._save_static_gesture(label, self._buffer[0])
+            
         elif self.current_recording_type == RecordingType.DYNAMIC:
-            print("WARNING: Dynamic gesture recording not yet implemented.")
+            self._video_buffer = []
+            self._pending_label = label
+            self._recording_active = True
+            print(f"INFO: STARTED recording sequence for '{label}'...")
         else:
             print("ERROR: No recording type selected. Cannot save gesture.")
 
@@ -128,3 +150,13 @@ class Recorder:
                 return
             writer = csv.writer(f)
             writer.writerow([label] + interpreted_data)
+
+    def _save_dynamic_gesture(self, label):
+        with open(self.current_working_file, mode='a', newline='') as f:
+            if (f.tell() == 0):
+                print(f"Error: File {self.current_working_file} is empty. Cannot write data without headers.")
+                return
+            flat_video_data = [coordinate for frame in self._video_buffer for coordinate in frame]
+            writer = csv.writer(f)
+            writer.writerow([label] + flat_video_data)
+        return
