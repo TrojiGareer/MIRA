@@ -11,24 +11,24 @@ class Classifier:
     # calculates a score that allows it to decide whether or not a movement is noise or a gesture
     def __init__(self):
         self.score = 0
-        self.past_20_frames = []
+        self.past_30_frames = []
         self.past_frame_count = 0
         self.last_classification = 0
         self.crt_gesture = Gesture.NONE
 
     # called every frame, gathers the past 20 frames at all times
     def update(self, results):
-        self.past_20_frames.append(results)
+        self.past_30_frames.append(results)
         self.past_frame_count += 1
 
-        if self.past_frame_count > 20:
-            self.past_20_frames.pop(0)
+        if self.past_frame_count > 30:
+            self.past_30_frames.pop(0)
 
     def calculate_movement_type(self):
-        if len(self.past_20_frames) < 20:
+        if len(self.past_30_frames) < 30:
             return "noise"
         
-        last_frame = self.past_20_frames[19]
+        last_frame = self.past_30_frames[29]
         if not last_frame.multi_hand_landmarks:
             return "noise"
         last_frame = last_frame.multi_hand_landmarks[0]
@@ -55,12 +55,12 @@ class Classifier:
 
     # steady hand and moving fingers is usually just sign transition
     def finger_movement(self):
-        if len(self.past_20_frames) < 20: 
+        if len(self.past_30_frames) < 30: 
             return 0.0
 
         distances = []
 
-        for res in self.past_20_frames:
+        for res in self.past_30_frames:
             if not res.multi_hand_landmarks: 
                 continue
             
@@ -136,9 +136,9 @@ class Classifier:
     # static movement or signs is usually just moving of the fingers
     def translation(self, point):
         total_distance = 0
-        for i in range(19):
-            curr_res = self.past_20_frames[i]
-            next_res = self.past_20_frames[i+1]
+        for i in range(29):
+            curr_res = self.past_30_frames[i]
+            next_res = self.past_30_frames[i+1]
 
             # if for a frame the camera tweaked
             if not (curr_res.multi_hand_landmarks and next_res.multi_hand_landmarks):

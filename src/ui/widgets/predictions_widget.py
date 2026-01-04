@@ -1,4 +1,5 @@
 import time
+import traceback
 
 from PyQt6.QtWidgets import QWidget, QListWidgetItem
 from PyQt6.QtCore import Qt
@@ -7,7 +8,7 @@ from ml import Predictor
 
 from .auto_predictions_widget import Ui_widgetPredictions
 
-from utils import STATIC_MODEL_PATH
+from utils import STATIC_MODEL_PATH, DYNAMIC_MODEL_PATH
 
 class PredictionsWidget(QWidget, Ui_widgetPredictions):
     _MAX_PREDICTIONS_PER_SECOND = 2
@@ -17,7 +18,7 @@ class PredictionsWidget(QWidget, Ui_widgetPredictions):
         super().__init__(parent)
         self.setupUi(self)
 
-        self._predictor = Predictor(STATIC_MODEL_PATH)
+        self._predictor = Predictor(STATIC_MODEL_PATH, DYNAMIC_MODEL_PATH)
 
         self._last_prediction_time = 0.0
         self._last_gesture = ""
@@ -31,10 +32,11 @@ class PredictionsWidget(QWidget, Ui_widgetPredictions):
     
     def reload_models(self):
         try:
-            self._predictor = Predictor(STATIC_MODEL_PATH)
+            self._predictor = Predictor(STATIC_MODEL_PATH, DYNAMIC_MODEL_PATH)
             print("INFO: reloaded models")
         except Exception as e:
             print(f"Error reloading models: {e}")
+            traceback.print_exec()
 
     def predict_and_display(self, results):
         if not results.multi_hand_landmarks:
@@ -47,7 +49,7 @@ class PredictionsWidget(QWidget, Ui_widgetPredictions):
         if current_time - self._last_prediction_time < 1.0 / self._MAX_PREDICTIONS_PER_SECOND:
             return
 
-        gesture_id = self._predictor.predict()
+        gesture_id = self._predictor.predict(results)
         if current_gesture != gesture_id:
             current_gesture = str(gesture_id)
 
