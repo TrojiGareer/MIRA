@@ -42,12 +42,14 @@ class PredictionsWidget(QWidget, Ui_widgetPredictions):
             self._last_gesture = ""
             return
 
+        current_gesture = "noise"
         current_time = time.time()
         if current_time - self._last_prediction_time < 1.0 / self._MAX_PREDICTIONS_PER_SECOND:
             return
 
-        gesture_id = self._predictor._classifier.calculate_movement_type()
-        current_gesture = str(gesture_id)
+        gesture_id = self._predictor.predict()
+        if current_gesture != gesture_id:
+            current_gesture = str(gesture_id)
 
         self.labelCurrentPrediction.setText(current_gesture)
 

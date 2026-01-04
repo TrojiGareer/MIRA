@@ -1,4 +1,11 @@
 import math
+from enum import Enum, auto
+
+class Gesture(Enum):
+    NONE = auto()
+    NOISE = auto()
+    STATIC = auto()
+    DYNAMIC = auto()
 
 class Classifier:
     # calculates a score that allows it to decide whether or not a movement is noise or a gesture
@@ -7,6 +14,7 @@ class Classifier:
         self.past_20_frames = []
         self.past_frame_count = 0
         self.last_classification = 0
+        self.crt_gesture = Gesture.NONE
 
     # called every frame, gathers the past 20 frames at all times
     def update(self, results):
@@ -15,45 +23,82 @@ class Classifier:
 
         if self.past_frame_count > 20:
             self.past_20_frames.pop(0)
-            # print(f"frames: {len(self.past_20_frames)}")
-            if (self.past_frame_count - self.last_classification) % 20 == 0:
-                self.last_classification = self.past_frame_count
-                movement = self.calculate_movement_type()
-                # print(f"current movement appears to be {movement}")
 
-    # dynamic movement will most likely involve the translation of the hand on screen
-    # static movement or signs is usually just moving of the fingers
     def calculate_movement_type(self):
         if len(self.past_20_frames) < 20:
             return "noise"
         
-        total_distance = 0
-        for i in range(19):
-            curr_res = self.past_20_frames[i]
-            next_res = self.past_20_frames[i+1]
+        last_frame = self.past_20_frames[19]
+        if not last_frame.multi_hand_landmarks:
+            return "noise"
+        last_frame = last_frame.multi_hand_landmarks[0]
+        hand_scale = math.sqrt((last_frame.landmark[9].x - last_frame.landmark[0].x)**2 + (last_frame.landmark[9].y - last_frame.landmark[0].y)**2)
 
-            # if for a frame the camera tweaked
-            if not (curr_res.multi_hand_landmarks and next_res.multi_hand_landmarks):
-                continue
-            
-            curr_wrist = curr_res.multi_hand_landmarks[0].landmark[0]
-            next_wrist = next_res.multi_hand_landmarks[0].landmark[0]
+        if hand_scale < 0.01:
+            return "noise"
 
-            # distance the wrist moved the past 2 frames
-            step_dist = math.sqrt((next_wrist.x - curr_wrist.x)**2 + (next_wrist.y - curr_wrist.y)**2)
-            
-            total_distance += step_dist
+        # for wrist
+        hand_translation = (self.translation(0) / 2 + self.translation(9) / 2) / hand_scale
+        finger_wiggle =  self.finger_movement()
         
-        if total_distance > 0.4:
+        if hand_translation > 0.9:
+            self.crt_gesture = Gesture.DYNAMIC
             return "dynamic"
         else:
-            return "static"
-
+            if finger_wiggle > 0.0008:
+                self.crt_gesture = Gesture.NOISE
+                return "noise"
+            else:
+                self.crt_gesture = Gesture.STATIC
+                return "static"
 
 
     # steady hand and moving fingers is usually just sign transition
-    def finger_movement(self, landmarks):
-        return
+    def finger_movement(self):
+        if len(self.past_20_frames) < 20: 
+            return 0.0
+
+        distances = []
+
+        for res in self.past_20_frames:
+            if not res.multi_hand_landmarks: 
+                continue
+            
+            lm = res.multi_hand_landmarks[0].landmark
+            frame_distances = []
+            dist_index = math.sqrt((lm[8].x - lm[0].x)**2 + (lm[8].y - lm[0].y)**2)
+            frame_distances.append(dist_index)
+
+            dist_middle = math.sqrt((lm[12].x - lm[0].x)**2 + (lm[12].y - lm[0].y)**2)
+            frame_distances.append(dist_middle)
+
+            dist_ring = math.sqrt((lm[16].x - lm[0].x)**2 + (lm[16].y - lm[0].y)**2)
+            frame_distances.append(dist_ring)
+
+            dist_pinky = math.sqrt((lm[20].x - lm[0].x)**2 + (lm[20].y - lm[0].y)**2)
+            frame_distances.append(dist_pinky)
+
+            distances.append(frame_distances)
+
+        if not distances: 
+            return 0.0
+
+        # average distances each finger moved
+        avg_dist = []
+        for i in range(4):
+            avg_dist.append(sum(row[i] for row in distances) / len(distances))
+
+        total_wiggle_score = 0
+
+        for row in distances:
+            for i in range(len(row)):
+                deviation = row[i] - avg_dist[i]
+                total_wiggle_score += (deviation ** 2)
+
+
+        final_score = total_wiggle_score / len(distances)
+
+        return final_score
     
     # a relaxed hand has a specific shape, that can be calculated
     def relaxation_factor(self, results):
@@ -87,9 +132,26 @@ class Classifier:
     def center_bias(self, landmarks):
         return
 
-    # a hand that bolts through the screen is likely being moved outside of it, not a sign
-    def translation_speed(self, landmarks):
-        return
+    # dynamic movement will most likely involve the translation of the hand on screen
+    # static movement or signs is usually just moving of the fingers
+    def translation(self, point):
+        total_distance = 0
+        for i in range(19):
+            curr_res = self.past_20_frames[i]
+            next_res = self.past_20_frames[i+1]
+
+            # if for a frame the camera tweaked
+            if not (curr_res.multi_hand_landmarks and next_res.multi_hand_landmarks):
+                continue
+            
+            curr = curr_res.multi_hand_landmarks[0].landmark[point]
+            flwing = next_res.multi_hand_landmarks[0].landmark[point]
+
+            # distance the wrist moved the past 2 frames
+            step_dist = math.sqrt((flwing.x - curr.x)**2 + (flwing.y - curr.y)**2)
+            
+            total_distance += step_dist
+        return total_distance
 
     # gestures are usually perfect lines, curves or circles
     def trajectory(self, landmarks):
