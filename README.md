@@ -69,6 +69,32 @@
   - Added console logging for gesture state transitions (`MODE SWITCHED: ACTIVE/SLEEP`)
   - Fine-tuned all threshold values through empirical testing to balance sensitivity vs. false positives
 
+### Ana Miron - Live Prediction, ML Integration, Data Processing, Data Acquisition and Live Integration Suite
+
+- **Machine Learning & Gesture Recognition Pipeline**: 
+  - Designed and engineered the real-time processing, classification and prediction pipeline, using a 20-frame sliding window buffer that performs heuristic mathematical calculations to distinguish between gesture types (static, dynamic, noise) and sends the processed data to one of the two pre-trained random forest models (one for static and one for dynamic input)
+    1. **The Classifier**: 
+      a. Analyzes data in real-time to classify it into noise, static gestures or dynamic movements
+      b. Uses a 20-frame sliding window buffer to increase classification accuracy
+      c. Mathematically calculates the movement type using a custom-made formula, based on wrist, palm, and finger movement, and returns the movement type
+      d. Processes the data into the custom format needed for the model that will make the prediction, then passes it to receive the result
+      e. Filters noise from gestures to reduce false predictions and cpu load
+    2. **The Static Model**:
+      a. Trained on 84 float array of vectors (21 mediapipe points x 2 coords x 2 hands)
+      b. Takes the processed frame coordinates and returns a prediction using a random forest classifier
+    3. **The Dynamic Model**:
+      a. Takes the processed coordinates of 30 consecutive frames (30 arrays x 84 coordinates)
+      b. Makes predictions using a random forest classifier trained on the dataset
+
+- **Data Processing and Engineering**
+  - Developed the normalization algorithms used to turn the raw mediapipe objects into a polished 1d array of [-1, 1] values representing the x and y coordinates of each point, achieved by making the wrist the (0, 0) point (the position of the hand on the screen does not affect the predictions) and by dividing each coordinate by the absolute maximum value (the scale or "closeness" to the screen doesnt matter)
+  - Integrated 2-hand support by adding 0 padding to every input to integrate recognition across both models
+
+- **Dynamic Data Acquisition & Retraining Sysytem**:
+  - Built a full data acquisition and integration suite directly into the application, to allow custom gesture integration and pre-built gestures refinement
+  - User selects what type of gesture they want to integrate (static or dynamic), the label for this new gesture, then records as many samples as needed (recommendation is 30)
+  - Developed an automated retraining script, fully integrated in the ML lifecycle that ingests and processes the new data, then immediately swaps the models for the new ones
+
 ---
 
 ## Difficulties & Solutions
@@ -77,6 +103,8 @@
   - *Solution*: Moved the `Camera` class to a background thread, emitting `frame_captured` signals only when processing is complete.
 - **Gesture Conflicts**: The "Left Click" gesture was often mistaken for cursor movement.
   - *Solution*: Changed the tracking point from the **index finger** to the **index knuckle**, therefore when pinching the index with the thumb, the **cursor** won't move.
+- **Model inacuracy**: Predictions were wrong and accuracy was about 60%
+  - *Solution*: Processed the data to eliminate discrepancies between the same gesture caused by physical distance or rotation of the hand, added noise filters, increased the training samples dataset
 
 ---
 
