@@ -1,10 +1,9 @@
 import time
 import numpy as np
 from PyQt6.QtWidgets import QWidget
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, Qt
 
-from capture import Camera 
-# Note: We NO LONGER import Vision here, because Camera handles it!
+from capture import Camera
 from utils import convert_cv_to_pixmap
 from .auto_camera_feed_widget import Ui_widgetCameraFeed
 from commands.mapper import CommandMapper

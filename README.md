@@ -1,25 +1,101 @@
-# M.I.R.A. - Motion Interpretation Remote Assistant
+# M.I.R.A.
 
-A program that reads hand signals and gestures by temporarily accessing the device's camera, with an intuitive GUI and a ML model that can be trained to learn more or perfect the already existing recognized signals.
+**M.I.R.A.** (Motion Interpretation Remote Assistant) is a desktop assistive technology application built in **Python** using **PyQt6**, **OpenCV**, and **MediaPipe**. It enables full hands-free computer control and learns gestures.
+
+---
 
 ## Features
 
-Last update: 26/12/25
-At this current time, the features of the app are:
-+ gesture recognition mode
-+ data collection mode
-+ a model that trains itself on the new sets of data provided
-+ intuitive GUI for a smooth UX
+- **Core Functionality**
+  - **Touch-less Control**: Complete mouse navigation (move, click, drag) and keyboard shortcuts using hand gestures.
+  - **Dynamic Modes**: Seamless switching between *Prediction Mode* and *Data Collection Mode*.
+  - **Visual Feedback**: Real-time camera feed with overlays and prediction logging.
 
-## Running the program
-After cloning the project, creating the virtual environment and installing the dependancies, go to MIRA/src and run `python main.py`. Everything else can be done from buttons in the UI.
+- **System Architecture**
+  - Built with **PyQt6** for a responsive, event-driven GUI.
+  - **Multithreaded Pipeline**: Video capture and inference run on dedicated threads to prevent UI freezing.
+  - **Core Structure**:
+    ```python
+    class MainWindow(QMainWindow):
+        # Connection of backend logic to UI
+        def __init__(self):
+            self.camera_thread = Camera()       # QThread for non-blocking capture
+            self.predictor = Predictor()        # ML Inference Engine
+            self.mapper = CommandMapper()       # Heuristic Logic Engine
+            self.executor = Executor()          # OS Automation Bridge
+            self.mode = AppMode.IDLE            # State Machine (Idle/Predict/Collect)
+    ```
+  - **Signal-Slot Communication**: Asynchronous data flow between the Camera thread and the GUI widgets using `pyqtSignal`.
 
-To manually retrain the model, after stopping everything, in MIRA/src run `python train.py`.
+- **User Experience**
+  - **Interactive Manual**: Built-in, tabbed "Command Manual" for presenting default gestures to the user.
+  - 
 
-### Prediction mode
-Run the app using the steps above, press 'Start M.I.R.A.' and put your hands in the device camera's view. To stop this, click on the same button, which now says 'Stop M.I.R.A.'.
+---
 
-### Data collection mode
-Run the app using the steps above, press 'Start Data Collection', type the name of the sign or gesture you want to record, then press enter. Show the sign to the camera and when you are ready press enter, which will collect the data about your hand position in the current frame. Repeat this process, slightly changing your hand positioning each time, until a big enough dataset has been gathered (around 50-100 snaps should suffice). Taking these snaps in various locations with different lightings and heights will significantly help with prediction accuracy. When enough data has been gathered, press the button again to exit data collection mode.
+## Engine Highlights
 
-Close the window to stop the project and manually retrain the model as instructed above, you'll see a message about your new model accuracy in the console. You can now test and use your new gesture when running MIRA again.
+- **Hand gesture commands**
+  - Wrapper around **PyAutoGUI** to handle OS-level inputs.
+  - **Coordinate Mapping**: Translates normalized camera coordinates (0.0 - 1.0) to screen resolution pixels (1920x1080) to prevent cursor drift.
+
+---
+
+# Individual Contributions
+
+### Ianis Nicolau - Hand Gestures & UI/UX
+
+- **System Architecture & Multithreading**: 
+  - Designed the modular `PyQt6` structure with a clear separation between UI and backend logic
+  - Implemented the **QThread-based Camera** to prevent UI blocking during heavy MediaPipe processing
+  - Established **signal-slot communication** pattern between `Camera`, `MainWindow`, and processing engines (`Predictor`, `CommandMapper`)
+
+- **Gesture Recognition**:
+  - Developed the complete `CommandMapper` class with **distinct heuristic algorithms**:
+    1. **Pinch Detection**: Euclidean distance (`CLICK_THRESHOLD = 0.05`) for left-click (thumb-index) and right-click (thumb-middle)
+    2. **Mouse Freeze Mechanism**: `FREEZE_THRESHOLD = 0.10` prevents cursor jitter when preparing to click by freezing movement during pre-pinch approach
+    3. **Dead Zone Mapping**: `FRAME_MARGIN = 0.2` excludes outer 20% of camera frame, mapping center 60% to full screen to eliminate edge-case tracking errors
+    4. **Victory Sign Scroll**: Y-coordinate thresholds (< 0.4 = up, > 0.6 = down) with a 20% dead zone for stable scrolling
+    5. **Two-Hand Volume Control**: Delta-based distance tracking (`±0.02` threshold) between index fingers to filter out noise
+   - Switched tracking point from **index fingertip** to **index knuckle** to prevent cursor movement during pinch gestures
+
+- **UI/UX**:
+  - Designed and implemented the **interactive Command Manual** with tabbed gesture previews
+  - Fixed camera aspect ratio issues to prevent distorted video feed
+  - Added real-time visual feedback system (overlay rendering, prediction logs)
+  - Implemented the "Ring Fold" gesture logic for Alt+Tab functionality with a 30-frame cooldown to prevent spam
+
+- **Debugging**:
+  - Added console logging for gesture state transitions (`MODE SWITCHED: ACTIVE/SLEEP`)
+  - Fine-tuned all threshold values through empirical testing to balance sensitivity vs. false positives
+
+---
+
+## Difficulties & Solutions
+
+- **UI Freezing**: Running heavy computer vision tasks on the main thread made the GUI freeze/crash.
+  - *Solution*: Moved the `Camera` class to a background thread, emitting `frame_captured` signals only when processing is complete.
+- **Gesture Conflicts**: The "Left Click" gesture was often mistaken for cursor movement.
+  - *Solution*: Changed the tracking point from the **index finger** to the **index knuckle**, therefore when pinching the index with the thumb, the **cursor** won't move.
+
+---
+
+## Installation & Usage
+
+**Requirements**:
+- Python 3.10+
+- `pip install -r requirements.txt`
+- **Linux Users**: Must use an X11 session (Wayland is not supported).
+
+**Run Instructions**:
+- After creating the virtual environment and installing the requirements, clone the repository and do the following:
+```bash
+cd src
+python main.py
+```
+
+---
+
+## Repository
+
+**GitHub**: [https://github.com/TrojiGareer/MIRA](https://github.com/TrojiGareer/MIRA)

@@ -67,7 +67,7 @@ class CommandMapper:
                 if self.activation_counter > self.STATE_CHANGE_FRAMES:
                     if not self.is_active:
                         self.is_active = True
-                        print(">>> MODE SWITCHED: ACTIVE (Mouse On) <<<")
+                        print("MODE SWITCHED: ACTIVE (Mouse On)")
                     self.activation_counter = 0 
             else:
                 self.deactivation_counter += 1
@@ -75,7 +75,7 @@ class CommandMapper:
                 if self.deactivation_counter > self.STATE_CHANGE_FRAMES:
                     if self.is_active:
                         self.is_active = False
-                        print(">>> MODE SWITCHED: SLEEP (Mouse Off) <<<")
+                        print("MODE SWITCHED: SLEEP (Mouse Off)")
                     self.deactivation_counter = 0
         else:
             if self.activation_counter > 0:
