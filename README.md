@@ -10,7 +10,7 @@
   - **Touch-less Control**: Complete mouse navigation (move, click, drag) and keyboard shortcuts using hand gestures.
   - **Dynamic Modes**: Seamless switching between *Prediction Mode* and *Data Collection Mode*.
   - **Visual Feedback**: Real-time camera feed with overlays and prediction logging.
-
+a
 - **System Architecture**
   - Built with **PyQt6** for a responsive, event-driven GUI.
   - **Multithreaded Pipeline**: Video capture and inference run on dedicated threads to prevent UI freezing.
@@ -74,17 +74,17 @@
 - **Machine Learning & Gesture Recognition Pipeline**: 
   - Designed and engineered the real-time processing, classification and prediction pipeline, using a 20-frame sliding window buffer that performs heuristic mathematical calculations to distinguish between gesture types (static, dynamic, noise) and sends the processed data to one of the two pre-trained random forest models (one for static and one for dynamic input)
     1. **The Classifier**: 
-      a. Analyzes data in real-time to classify it into noise, static gestures or dynamic movements
-      b. Uses a 20-frame sliding window buffer to increase classification accuracy
-      c. Mathematically calculates the movement type using a custom-made formula, based on wrist, palm, and finger movement, and returns the movement type
-      d. Processes the data into the custom format needed for the model that will make the prediction, then passes it to receive the result
-      e. Filters noise from gestures to reduce false predictions and cpu load
+      - Analyzes data in real-time to classify it into noise, static gestures or dynamic movements
+      - Uses a 20-frame sliding window buffer to increase classification accuracy
+      - Mathematically calculates the movement type using a custom-made formula, based on wrist, palm, and finger movement, and returns the movement type
+      - Processes the data into the custom format needed for the model that will make the prediction, then passes it to receive the result
+      - Filters noise from gestures to reduce false predictions and cpu load
     2. **The Static Model**:
-      a. Trained on 84 float array of vectors (21 mediapipe points x 2 coords x 2 hands)
-      b. Takes the processed frame coordinates and returns a prediction using a random forest classifier
+      - Trained on 84 float array of vectors (21 mediapipe points x 2 coords x 2 hands)
+      - Takes the processed frame coordinates and returns a prediction using a random forest classifier
     3. **The Dynamic Model**:
-      a. Takes the processed coordinates of 30 consecutive frames (30 arrays x 84 coordinates)
-      b. Makes predictions using a random forest classifier trained on the dataset
+      - Takes the processed coordinates of 30 consecutive frames (30 arrays x 84 coordinates)
+      - Makes predictions using a random forest classifier trained on the dataset
 
 - **Data Processing and Engineering**
   - Developed the normalization algorithms used to turn the raw mediapipe objects into a polished 1d array of [-1, 1] values representing the x and y coordinates of each point, achieved by making the wrist the (0, 0) point (the position of the hand on the screen does not affect the predictions) and by dividing each coordinate by the absolute maximum value (the scale or "closeness" to the screen doesnt matter)
