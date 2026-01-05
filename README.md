@@ -94,6 +94,26 @@ a
   - Built a full data acquisition and integration suite directly into the application, to allow custom gesture integration and pre-built gestures refinement
   - User selects what type of gesture they want to integrate (static or dynamic), the label for this new gesture, then records as many samples as needed (recommendation is 30)
   - Developed an automated retraining script, fully integrated in the ML lifecycle that ingests and processes the new data, then immediately swaps the models for the new ones
+
+---
+
+### Vasile Burlacu - UI/UX, Computer Vision & Utility
+
+- **UI Modularization & Styling**:
+  - Led the creation of the GUI with Qt Designer and refactoring of the "God Object" MainWindow into a modular, Mediator-based architecture
+  - Created standalone, reusable UI components (CameraFeedWidget, PredictionsWidget, ControlPanelWidget) using pyuic6 generated classes
+  - Designed the complex Signal/Slot network that routes raw data between widgets, with the main window acting as the Mediator
+  - Applied consistent styling across the application using Qt Style Sheets (QSS) for a modern look and feel
+
+- **Computer Vision**:
+  - Implemented safe startup/shutdown sequences for the camera thread and recorders to prevent memory leaks and file corruption
+  - Developed the high-performance frame conversion pipeline to translate raw NumPy/OpenCV BGR buffers into display-ready QPixmaps
+
+- **Utility**
+  - Centralized all system paths and global constants into utils/config.py to ensure environment consistency
+  - Created and upgraded utility scripts for UI generation (from .ui to .py) and model training
+  - Developed the Status Bar feedback system, providing real-time FPS monitoring and interpreter status updates through asynchronous signal handling
+
 ---
 
 ## Difficulties & Solutions
