@@ -1,7 +1,6 @@
 import pyautogui
 import platform
 
-# Disable failsafe and remove delay for smooth movement
 pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0
 
@@ -12,7 +11,6 @@ class Executor:
 
     def move_mouse(self, x_ratio: float, y_ratio: float):
         """Moves mouse to x,y coordinates (0.0 to 1.0)"""
-        # Clamp values to screen bounds
         screen_x = max(0, min(int(x_ratio * self.screen_w), self.screen_w - 1))
         screen_y = max(0, min(int(y_ratio * self.screen_h), self.screen_h - 1))
         pyautogui.moveTo(screen_x, screen_y)
@@ -34,7 +32,6 @@ class Executor:
         Scrolls the page.
         distance: positive for UP, negative for DOWN
         """
-        # Sensitivity multiplier
         scroll_amount = int(distance * 500) 
         pyautogui.scroll(scroll_amount)
 
@@ -43,3 +40,10 @@ class Executor:
             pyautogui.press('volumeup')
         elif direction == 'down':
             pyautogui.press('volumedown')
+
+    def switch_window(self):
+        """
+        Opens Windows Task View (Win + Tab).
+        This allows the user to see ALL windows and select one with the mouse gesture.
+        """
+        pyautogui.hotkey('win', 'tab')

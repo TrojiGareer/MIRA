@@ -1,7 +1,7 @@
 import time
 from PyQt6.QtWidgets import QMainWindow, QLabel
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QKeyEvent
+from PyQt6.QtGui import QKeyEvent, QAction  # ADDED QAction
 
 from enum import Enum, auto
 
@@ -9,20 +9,11 @@ from .auto_main_window import Ui_MainWindow
 from ml.train.recorder import RecordingType
 
 class AppMode(Enum):
-    """
-    Application modes enum class for M.I.R.A.
-    """
-
     IDLE = auto()
     COLLECTING = auto()
     PREDICTING = auto()
 
 class MainWindow(QMainWindow, Ui_MainWindow):
-    """
-    The main application window, inheriting structure from the pyuic generated code
-    The app's brain - receives signals from widgets and routes them accordingly
-    """
-
     def __init__(self):
         super().__init__()
         
@@ -35,29 +26,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def _initialize_components(self):
         """
-        Private helper that initializes custom UI logic and connects the UI to the backend(camera, model, etc.)
+        Initializes custom UI logic and connects backend.
         """
-
-        # The new widgets added after setupUi don't take the styles from the .css file => define them here
         self.statusbar.setStyleSheet("""
             background-color: #382437;
             padding: 0px 20px
         """)
 
-        # Status bar permanent labels
+        self.menubar.clear()
+        self.action_help = QAction("Help", self)
+        self.action_help.triggered.connect(self.widgetPredictions.show_help_dialog)
+        self.menubar.addAction(self.action_help)
+
         self.labelFPS = QLabel("FPS: --")
         self.statusbar.addPermanentWidget(self.labelFPS)
         self.labelInterpreterStatus = QLabel("Interpreter: Offline")
         self.statusbar.addPermanentWidget(self.labelInterpreterStatus)
 
-        # FPS Counter
         self._last_fps_update_time = time.time()
         self.widgetCameraFeed.fps_signal.connect(self._update_fps)
 
-        # Results redirection
         self.widgetCameraFeed.results_processed.connect(self._handle_frame_results)
 
-        # Control panel connections
         self.widgetControlPanel.inference_toggle_requested.connect(self._toggle_inference)
         self.widgetControlPanel.collection_toggle_requested.connect(self._toggle_data_collection)
         self.widgetControlPanel.status_msg_signal.connect(self.statusbar.showMessage)
@@ -69,20 +59,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         print("INFO: UI initialized successfully!")
 
     def _clear_all(self):
-        """
-        Resets the application to the initial state. Clears all the filled data in the UI
-        """
         self.widgetPredictions.clear()
         self.widgetCameraFeed.clear()
         self.widgetControlPanel.clear()
     
     def _toggle_inference(self):
-        """
-        Toggles the inference mode of M.I.R.A.
-        """
-
         if not self.mode == AppMode.PREDICTING:
-            # if in data collection mode, stop and restart
             if self.mode == AppMode.COLLECTING:
                 self._toggle_data_collection()
 
@@ -101,12 +83,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.mode = AppMode.IDLE
     
     def _toggle_data_collection(self):
-        """
-        Toggles the data collection mode of M.I.R.A.
-        """
-
         if not self.mode == AppMode.COLLECTING:
-            # if in prediction mode, stop and restart
             if self.mode == AppMode.PREDICTING:
                 self._toggle_inference()
 
@@ -123,13 +100,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.mode = AppMode.IDLE
     
     def _handle_frame_results(self, results):
-        """
-        Handles the results obtained from processing a frame in the camera feed.
-        Redirects the results to the appropriate widgets based on the current mode.
-
-        :param results: The hand landmark results obtained from processing the frame
-        """
-
         if self.mode == AppMode.PREDICTING:
             self.widgetPredictions._predictor._classifier.update(results)
             self.widgetPredictions.predict_and_display(results)
@@ -137,11 +107,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.widgetControlPanel.collect_frame(results)                
     
     def _update_fps(self, curr_fps : int):
-        """
-        Updates the fps label in the status bar at most once per second
-        
-        :param curr_fps: The current frames per second to display
-        """
         curr_time = time.time()
         elapsed_time = curr_time - self._last_fps_update_time
 

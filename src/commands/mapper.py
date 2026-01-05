@@ -1,29 +1,22 @@
 import math
-import numpy as np # Added for easier clamping if needed, though simple logic works
+import numpy as np
 from .executor import Executor
 
 class CommandMapper:
     def __init__(self):
         self.executor = Executor()
         
-        # --- STATE FLAGS ---
         self.is_active = False  
         self.is_pinching_left = False
         self.is_pinching_right = False
         self.last_volume_dist = None
         
-        # --- ACTIVATION TIMERS ---
         self.activation_counter = 0
         self.deactivation_counter = 0
         self.STATE_CHANGE_FRAMES = 10 
 
-        # --- THRESHOLDS ---
         self.CLICK_THRESHOLD = 0.05
         self.FREEZE_THRESHOLD = 0.10 
-
-        # --- ACTIVE ZONE SETTINGS (New) ---
-        # 0.2 means 20% margin on each side. 
-        # Your hand only needs to move within the middle 60% of the frame.
         self.FRAME_MARGIN = 0.2 
 
     def process_results(self, results):
@@ -32,19 +25,16 @@ class CommandMapper:
 
         hand_landmarks_list = results.multi_hand_landmarks
         first_hand = hand_landmarks_list[0]
-        
-        # 1. ALWAYS CHECK FOR STATE TOGGLE 
+
         self._handle_state_switching(first_hand)
 
         if not self.is_active:
             return
 
-        # 2. VOLUME MODE (Two Hands)
         if len(hand_landmarks_list) == 2:
             self._handle_volume_control(hand_landmarks_list[0], hand_landmarks_list[1])
             return 
-        
-        # 3. MOUSE & SCROLL MODE (One Hand)
+
         self._handle_mouse_and_scroll(first_hand)
 
     def _is_finger_curled(self, landmarks, tip_idx, pip_idx):
@@ -88,7 +78,8 @@ class CommandMapper:
                         print(">>> MODE SWITCHED: SLEEP (Mouse Off) <<<")
                     self.deactivation_counter = 0
         else:
-            self.activation_counter = 0
+            if self.activation_counter > 0:
+                 self.activation_counter -= 1
             self.deactivation_counter = 0
 
     def _handle_mouse_and_scroll(self, landmarks):
@@ -97,45 +88,40 @@ class CommandMapper:
         index_mcp = landmarks.landmark[5]  
         middle = landmarks.landmark[12]
         
-        # --- SCROLL CHECK ---
+        index_curled = self._is_finger_curled(landmarks, 8, 6)
+        middle_curled = self._is_finger_curled(landmarks, 12, 10)
         ring_curled = self._is_finger_curled(landmarks, 16, 14)
         pinky_curled = self._is_finger_curled(landmarks, 20, 18)
-        
-        is_victory_sign = (not self._is_finger_curled(landmarks, 8, 6) and 
-                           not self._is_finger_curled(landmarks, 12, 10) and
-                           ring_curled and 
-                           pinky_curled)
+
+        is_ring_fold = (not index_curled) and (not middle_curled) and ring_curled and (not pinky_curled)
+
+        if is_ring_fold:
+            if self.activation_counter == 0:
+                self.executor.switch_window()
+                print("Keyboard: Win + Tab")
+                self.activation_counter = 30
+            return
+
+        is_victory_sign = (not index_curled) and (not middle_curled) and ring_curled and pinky_curled
 
         if is_victory_sign:
             hand_y = landmarks.landmark[9].y 
-            # Scroll thresholds can stay absolute or use remapped coordinates.
-            # Keeping absolute for simplicity (hand position in camera).
             if hand_y < 0.4:
                 self.executor.scroll(1) 
             elif hand_y > 0.6:
                 self.executor.scroll(-1) 
             return 
 
-        # --- MOUSE MOVE MODE ---
         dist_left = self._calculate_distance(index_tip, thumb)
         should_move = (dist_left > self.FREEZE_THRESHOLD) or self.is_pinching_left
 
         if should_move:
-            # 1. Get raw coordinates (0.0 to 1.0)
             raw_x = index_mcp.x
             raw_y = index_mcp.y
-
-            # 2. Remap Coordinates (Active Zone Logic)
-            # Formula: (value - min) / (max - min)
-            # This converts the range [0.2, 0.8] to [0.0, 1.0]
-            
-            x_mapped = np.interp(raw_x, [self.FRAME_MARGIN, 1 - self.FRAME_MARGIN], [0, 1])
-            y_mapped = np.interp(raw_y, [self.FRAME_MARGIN, 1 - self.FRAME_MARGIN], [0, 1])
-
-            # 3. Move Mouse (Invert X for mirror effect)
+            x_mapped = np.interp(raw_x, [self.FRAME_MARGIN, 1.0 - self.FRAME_MARGIN], [0, 1])
+            y_mapped = np.interp(raw_y, [self.FRAME_MARGIN, 1.0 - self.FRAME_MARGIN], [0, 1])
             self.executor.move_mouse(1.0 - x_mapped, y_mapped)
 
-        # --- LEFT CLICK ---
         if dist_left < self.CLICK_THRESHOLD:
             if not self.is_pinching_left:
                 self.is_pinching_left = True
@@ -145,7 +131,6 @@ class CommandMapper:
                 self.is_pinching_left = False
                 self.executor.stop_drag()
 
-        # --- RIGHT CLICK ---
         dist_right = self._calculate_distance(middle, thumb)
         if dist_right < self.CLICK_THRESHOLD:
             if not self.is_pinching_right:

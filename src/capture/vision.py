@@ -2,7 +2,6 @@ import mediapipe as mp
 import numpy as np
 import cv2
 from PyQt6.QtGui import QImage, QPixmap
-from PyQt6.QtCore import Qt
 
 # object responsible for everything image-related
 class Vision:
