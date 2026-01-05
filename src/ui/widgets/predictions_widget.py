@@ -36,7 +36,7 @@ class PredictionsWidget(QWidget, Ui_widgetPredictions):
             print("INFO: reloaded models")
         except Exception as e:
             print(f"Error reloading models: {e}")
-            traceback.print_exec()
+            traceback.print_exc()
 
     def predict_and_display(self, results):
         if not results.multi_hand_landmarks:

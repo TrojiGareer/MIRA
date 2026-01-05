@@ -18,7 +18,7 @@ class CameraFeedWidget(QWidget, Ui_widgetCameraFeed):
         self.setupUi(self)
 
         self._camera_thread : Camera | None = None
-        # REMOVED: self._vision = Vision() -> We don't want this on the UI thread!
+        # REMOVED: self._vision = Vision() -> We want efficiency so the preprocessing is done in Camera in parallel
 
         self._command_mapper = CommandMapper()
 
@@ -31,15 +31,15 @@ class CameraFeedWidget(QWidget, Ui_widgetCameraFeed):
     def start_camera(self):
         if not self._camera_thread:
             self._camera_thread = Camera()
-            # CHANGED: Connect the new 'frame_processed' signal
-            self._camera_thread.frame_processed.connect(self._update_camera_feed)
+            # CHANGED: Connect the new 'frame_captured' signal
+            self._camera_thread.frame_captured.connect(self._update_camera_feed)
             self._camera_thread.start()
 
     def stop_camera(self):
         if self._camera_thread:
             # CHANGED: Disconnect the new signal
             try:
-                self._camera_thread.frame_processed.disconnect(self._update_camera_feed)
+                self._camera_thread.frame_captured.disconnect(self._update_camera_feed)
             except TypeError:
                 pass # Handle case where it might already be disconnected
                 

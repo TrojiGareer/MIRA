@@ -1,7 +1,9 @@
 import cv2
-import time
 import numpy as np
+
+
 from PyQt6.QtCore import QThread, pyqtSignal
+from .vision import Vision
 
 class Camera(QThread):
     """
@@ -9,14 +11,15 @@ class Camera(QThread):
     Emits the raw numpy array frame for processing and display
     """
 
-    # Signal to emit the captured frame (NumPy array)
-    frame_captured = pyqtSignal(np.ndarray)
+    # Signal to emit the captured frame (NumPy array) and mediapipe results
+    frame_captured = pyqtSignal(np.ndarray, object)
 
     def __init__(self, camera_index=0, parent=None):
         super().__init__(parent)
         self._camera_index = camera_index
         self._is_running = True
         self._capture = None
+        self._vision = Vision()
 
     def run(self):
         self._capture = cv2.VideoCapture(self._camera_index)
@@ -38,7 +41,9 @@ class Camera(QThread):
             ret, frame = self._capture.read()
 
             if ret:
-                self.frame_captured.emit(frame)
+                # Process frame using Vision
+                frame, results = self._vision.process_frame(frame)
+                self.frame_captured.emit(frame, results)
             else:
                 break
                 
